@@ -1,0 +1,9 @@
+database:
+  username:
+  password:
+  host:
+  port:
+  dbname:
+
+data:
+  folder_path: "data"
