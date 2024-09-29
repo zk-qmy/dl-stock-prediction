@@ -3,6 +3,11 @@ import os
 from sqlalchemy import create_engine
 import yaml
 
+# pip install SQLAlchemy
+
+# install MySQL Driver
+# pip install PyMySQL
+
 # Load configuration
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
@@ -26,3 +31,21 @@ for file in os.listdir(folder_path):
         df.to_sql('stocks', con=engine, if_exists='append', index=False)
         print(f"Inserted data for {company_name} into the database.")
 print("Data insertion complete.")
+
+import mysql.connector
+connection = mysql.connector.connect(
+    user="root",
+    password ="",
+    host="",
+    database="",
+    ssl_disablrd=True
+)
+cursor = connection.cursor()
+query = '''select * from open;'''
+cursor.excecute(query)
+results = []
+for i, data in enumerate(cursor):
+    results.append(data)
+cursor.close()
+connection.close()
+df = pd.DataFrame(results)

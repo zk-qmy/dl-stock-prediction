@@ -7,3 +7,8 @@ database:
 
 data:
   folder_path: "data"
+
+model:
+  epochs:
+  batch_size:
+  learning_rate:
