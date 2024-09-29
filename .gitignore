@@ -17,7 +17,6 @@ data/*.csv
 # Exclude configuration files containing sensitive info like database credentials
 config.yaml
 
-
 # Virtual environment
 venv/
 env/
