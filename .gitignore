@@ -12,7 +12,8 @@ dist/
 
 # Data files
 # Exclude raw data files if they are large or sensitive
-data/*.csv  
+#data/*.csv  
+data/
 
 
 # Configuration files
