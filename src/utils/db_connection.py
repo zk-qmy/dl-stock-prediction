@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, exc
 import yaml
 import mysql.connector
+# pip install mysql-connector-python
 
 
 def load_config():
@@ -20,7 +21,11 @@ def get_db_engine(config):
     # Setup DB connection
     db_config = config['database']
     try:
-        engine = create_engine(f"mysql+pymysql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}")
+        engine = create_engine(f"mysql+pymysql://"
+                               f"{db_config['username']}:"
+                               f"{db_config['password']}@"
+                               f"{db_config['host']}:{db_config['port']}/"
+                               f"{db_config['dbname']}")
         return engine
     except exc.SQLAlchemyError as e:
         print(f"Database Connecting failed: {e}")
@@ -28,10 +33,10 @@ def get_db_engine(config):
 
 
 def connect_to_db(config):
-    mysql.connector.connect(
-        user = config['database']['username'],
-        password =config['database']['password'],
-        host= config['database']['host'],
-        database= config['database']['dbName'],
-        ssl_disablrd=True
-        )
+    mysql.connector.connect(host=config['database']['host'],
+                            port=config['database']['port'],
+                            user=config['database']['username'],
+                            password=config['database']['password'],
+                            database=config['database']['dbname'],
+                            timeout=None,
+                            source_address=None)

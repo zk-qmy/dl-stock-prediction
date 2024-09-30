@@ -5,7 +5,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 tempCodeRunnerFile*
-
+__init__*
 
 # Distribution / packaging
 build/
