@@ -25,10 +25,10 @@ def insert_to_sql(folder_path, engine, table_name):
                                                         dayfirst=True)
                         else:
                             print(f"Column Date not found {file}, skip")
-                            continue
+                            raise
                     except Exception as e:
                         print(f"Error converting Date for {file}: {e}")
-                        continue  # skip this file
+                        raise
 
                     df.rename(columns={'TradingDate': 'date',
                                        'Ticker': 'ticker',
