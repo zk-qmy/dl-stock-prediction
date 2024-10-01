@@ -6,8 +6,12 @@ import os
 # install MySQL Driver
 # pip install PyMySQL
 
+def get_data():
+    ''' Get the dataset of the oldest company'''
 
-def insert_to_sql(folder_path, engine, table_name):
+
+def insert_to_sql(folder_path, engine, table_name):  
+    '''Insert all data from csv files to a database'''
     # Loop through all CSV files in the folder and combine them
     try:
         for file in os.listdir(folder_path):
@@ -53,22 +57,4 @@ def insert_to_sql(folder_path, engine, table_name):
         # print(f'File not found: {e}')
         raise
 
-'''
-import mysql.connector
-connection = mysql.connector.connect(
-    user="root",
-    password ="",
-    host="",
-    database="",
-    ssl_disablrd=True
-)
-cursor = connection.cursor()
-query = select * from open;
-cursor.excecute(query)
-results = []
-for i, data in enumerate(cursor):
-    results.append(data)
-cursor.close()
-connection.close()
-df = pd.DataFrame(results)
-'''
+

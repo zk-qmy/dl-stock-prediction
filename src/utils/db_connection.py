@@ -32,7 +32,7 @@ def get_db_engine(config):
         exit(1)
 
 
-def connect_to_db(config):
+def get_db_connection(config):
     mysql.connector.connect(host=config['database']['host'],
                             port=config['database']['port'],
                             user=config['database']['username'],
