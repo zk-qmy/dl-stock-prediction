@@ -30,7 +30,7 @@ def get_data(connection, db_name, table_name):
         raise
 
 
-def insert_to_sql(folder_path, engine, db_name, table_name):
+def insert_to_sql(folder_path, engine, table_name):
     '''Insert all data from csv files to a database'''
     # Loop through all CSV files in the folder and combine them
     try:
@@ -38,7 +38,8 @@ def insert_to_sql(folder_path, engine, db_name, table_name):
             for file in os.listdir(folder_path):
                 if file.lower().endswith('.csv'):
                     try:
-                        df = pd.read_csv(os.path.join(folder_path, file))
+                        df = pd.read_csv(os.path.join(
+                            folder_path, file), on_bad_lines='warn')
                         # Create a column of ticker name from filename
                         company_ticker = file.split('.')[0].split('-')[0]
                         df['Ticker'] = company_ticker
@@ -46,16 +47,28 @@ def insert_to_sql(folder_path, engine, db_name, table_name):
                             # Convert date data
                             if "TradingDate" in df.columns:
                                 df['date'] = pd.to_datetime(df['TradingDate'],
-                                                            dayfirst=True)
+                                                            dayfirst=True,
+                                                            errors='coerce')
                             elif "Date" in df.columns:
                                 df["date"] = pd.to_datetime(df["Date"],
-                                                            dayfirst=True)
+                                                            dayfirst=True,
+                                                            errors='coerce')
                             else:
                                 print(f"Column Date not found {file}, skip")
-                                raise
+                                # raise
+                                continue
+                            # Check for bad dates
+                            invalid_dates = df[df['date'].isna()]
+                            if not invalid_dates.empty:
+                                print(
+                                    f'Warning: {len(invalid_dates)} invalid dates in {file}')
+                            # Drop row with missing date
+                            df.dropna(subset=['date'], inplace=True)
+                            
                         except Exception as e:
                             print(f"Error converting Date for {file}: {e}")
-                            raise
+                            # raise
+                            continue
                         # Rename columns to align with the table in SQL DB
                         df.rename(columns={'TradingDate': 'date',
                                            'Ticker': 'ticker',
@@ -78,4 +91,6 @@ def insert_to_sql(folder_path, engine, db_name, table_name):
             print("Data insertion complete.")
     except FileNotFoundError:
         raise
-
+    except Exception as e:
+        print(f'Error during insertion: {e}')
+        raise
