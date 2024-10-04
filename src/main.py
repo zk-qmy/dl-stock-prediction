@@ -1,9 +1,8 @@
 # import pandas as pd
-from utils.db_connection import load_config, get_db_engine, get_db_connection
+from utils.db_connection import load_config, get_db_engine
 '''Encounter Wildcard imports when trying to
 from utils.db_connection import * '''
 from preprocessing.data_to_sql import insert_to_sql, get_data
-import pandas as pd
 
 
 config = load_config()

@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-from sqlalchemy import text
 
 # pip install SQLAlchemy
 # pip install pyyaml
@@ -13,9 +12,12 @@ def get_data(connection, db_name, table_name):
     query = f"""
             SELECT *
             FROM {db_name}.{table_name}
-            GROUP BY ticker
-            ORDER BY (MAX(date) - MIN(date)) DESC
-            LIMIT 1;
+            WHERE ticker = (
+                SELECT ticker from {db_name}.{table_name} 
+                GROUP BY ticker
+                ORDER BY (MAX(date) - MIN(date))
+                DESC
+                LIMIT 1);
         """
     try:
         # Convert the selected data to df
