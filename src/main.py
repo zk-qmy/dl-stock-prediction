@@ -27,3 +27,26 @@ if not os.path.exists(directory):
 
 # Save DataFrame as CSV
 df.to_csv(os.path.join(directory, 'nasdag_selected.csv'), index=False)
+
+
+# TRAIN MODEL
+# Get data samples with window_size to predict the value on label_colID column
+'''
+get_data_samples(df, window_size, feature_col_ID, label_colID, feature_num)
+return X_data, y_data
+
+# Split the samples to train/val/test
+split_data(X_data, y_data, test_size=0.2, val_size=0.2))
+return X_train, X_val, X_test, y_train, y_val, y_test
+
+reshape_data(X_train, X_val, X_test, dim_size) (optional) 
+return X_train, X_val, X_test
+
+# Normalise data
+min_max_scale(train_set, val_set, test_set) # handle differnet part of this code 
+return train_norm, val_norm, test_norm
+# build model architecture
+
+# plot training and validation performance
+plot_performance(history)
+plot_compare_pred_real(y_pred, y_real)'''
