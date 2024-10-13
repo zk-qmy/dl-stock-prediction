@@ -93,5 +93,5 @@ def get_data_samples_ks_day(df, k_days_ahead,
 
         # Append new data sample (feature and label) to X_data and y_data
         X_data.append(np.array(data_feature).reshape(window_size, 6))
-        y_data.append(np.array(data_label))
+        y_data.append(np.array(data_label).reshape(k_days_ahead,))
     return X_data, y_data
