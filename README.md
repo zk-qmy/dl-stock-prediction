@@ -25,7 +25,8 @@ your-project/
 │   │   └── trading_signals.py          
 │   │     
 │   ├── preprocessing/
-|   |	├── load_data.py   
+|   |	├── load_data.py
+|   |   ├── preprocess.py   
 │   │   └── data_to_sql.py   
 │   ├── models/            
 │   ├── evaluation/        
