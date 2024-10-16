@@ -71,3 +71,5 @@ models/*.pt        # Example for PyTorch models
 # Ignore all CSV files except the one you want to commit
 # Uncomment if you want to include a template CSV
 #!data/sample_template.csv
+# Logs
+logs/

@@ -1,11 +1,29 @@
 import pandas as pd
 import os
+import datetime
 from sqlalchemy import inspect
+import logging
+import os
 # pip install SQLAlchemy
 # pip install pyyaml
 # install MySQL Driver
 # pip install PyMySQL
 
+def get_log():
+    # log directory
+    log_dir = r'logs/'
+    # create new log file if not exist
+    os.makedirs(log_dir, exist_ok=True)
+    #
+    log_filename = f'toSQLWarning_{datetime.now().strtime("%d%m%Y_%H%M%S")}.log'
+    log_path = os.path.join(log_dir,log_filename)
+    # configure the logging
+    logging.basicConfig(
+        filename=log_path,
+        filemode='a', # use 'a' to append to the log file
+        format= '%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.Warning
+    )
 
 def get_data(connection, db_name, table_name):
     ''' Get the dataset of the company with longest duration'''
@@ -25,8 +43,10 @@ def get_data(connection, db_name, table_name):
         if not df.empty:
             return df
         else:
-            print('Data not found!')
-    except Exception:
+            logging.info('get_data() - dataFrame Empty!')
+            #print('Data not found!')
+    except Exception as e:
+        logging.error(f'get_data() - Exception: {e}')
         raise
 
 
@@ -68,7 +88,7 @@ def insert_to_sql(folder_path, engine, table_name):
                                 print(f"Column Date not found {file}, skip")
                                 # raise
                                 continue
-                            process_invalid_data(df, file)
+                            drop_invalid_date(df, file)
                         except Exception as e:
                             print(f"Error converting Date for {file}: {e}")
                             # raise
@@ -99,13 +119,16 @@ def insert_to_sql(folder_path, engine, table_name):
                                          connection, company_ticker,
                                          file)
 
-                    except Exception:
+                    except Exception as e:
+                        logging.error(f'insert_to_sql()- Exception: {e}')
                         raise
             print("Data insertion complete.")
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        logging.error(f'insert_to_sql() - FileNotFound: {e}')
         raise
     except Exception as e:
-        print(f'Error during insertion: {e}')
+        logging.error(f'insert_to_sql() - Exception: error during insertion {e}')
+        #print(f'Error during insertion: {e}')
         raise
 
 
@@ -117,7 +140,8 @@ def insert_df_to_sql(df, table_name, connection, company_ticker, file):
         print(
             f"Inserted data for {company_ticker} into DB.")
     else:
-        print(f"DF is empty after processing {file}. Skipping!")
+        logging.info(f'insert_df_to_sql() - DF is empty after processing {file}. Skipping!')
+        #print(f"DF is empty after processing {file}. Skipping!")
 
 
 def get_matching_cols(df, sql_columns, new_column_order, file):
@@ -131,7 +155,7 @@ def get_matching_cols(df, sql_columns, new_column_order, file):
     return matching_cols
 
 
-def process_invalid_data(df, file):
+def drop_invalid_date(df, file):
     # Drop duplicate columns
     #print(
     #    f"Columns after date conversion in {file}: {df.columns.tolist()}")
@@ -142,7 +166,12 @@ def process_invalid_data(df, file):
     # Check for bad dates
     invalid_dates = df[df['date'].isna()]
     if not invalid_dates.empty:
-        print(
-            f'Warning: {len(invalid_dates)} invalid dates in {file}')
+        logging.info(f'drop_invalid_date() - Warning: {len(invalid_dates)} invalid dates in {file}')
+        #print(
+        #    f'Warning: {len(invalid_dates)} invalid dates in {file}')
     # Drop row with missing date
     df.dropna(subset=['date'], inplace=True)
+
+
+def convert_date():
+def find_date_col():

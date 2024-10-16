@@ -2,7 +2,7 @@
 from utils.db_connection import load_config, get_db_engine
 '''Encounter Wildcard imports when trying to
 from utils.db_connection import * '''
-from preprocessing.data_to_sql import insert_to_sql, get_data
+from etl.data_to_sql import insert_to_sql, get_data
 import os
 
 config = load_config()
