@@ -6,7 +6,7 @@ import logging
 import os
 # pip install SQLAlchemy
 # pip install pyyaml
-# install MySQL Driver
+# pip install MySQL Driver
 # pip install PyMySQL
 
 
@@ -16,7 +16,7 @@ def get_log():
     # create new log file if not exist
     os.makedirs(log_dir, exist_ok=True)
     # log file path
-    log_filename = f"toSQLWarning_{datetime.now().strtime(r"%d%m%Y_%H%M%S")}.log"
+    log_filename = f"toSQLWarning_{datetime.now().strftime('%%d%%m%%Y_%%H%%M%%S')}.log"
     log_path = os.path.join(log_dir, log_filename)
     # configure the logging
     logging.basicConfig(
@@ -79,12 +79,12 @@ def insert_to_sql(folder_path, engine, table_name):
                             # Convert date data
                             if "TradingDate" in df.columns:
                                 df["date"] = pd.to_datetime(df["TradingDate"],
-                                                            dayfirst=True,
+                                                            dayfirst=False,
                                                             errors="coerce")
                                 df.drop(columns=["TradingDate"], inplace=True)
                             elif "Date" in df.columns:
                                 df["date"] = pd.to_datetime(df["Date"],
-                                                            dayfirst=True,
+                                                            dayfirst=False,
                                                             errors="coerce")
                                 df.drop(columns=["Date"], inplace=True)
                             else:
@@ -96,7 +96,7 @@ def insert_to_sql(folder_path, engine, table_name):
                                 continue
                             else:
                                 df["date"] = df["date"].dt.strftime(
-                                    r"%d-%m-%Y")
+                                    r"%Y-%m-%d")
                             drop_invalid_date(df, file)
                         except Exception as e:
                             print(f"Error converting Date for {file}: {e}")
