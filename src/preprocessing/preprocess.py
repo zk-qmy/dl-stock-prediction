@@ -54,7 +54,7 @@ def get_data_samples_kth_day(df, kth_day,
         data_label.append(df.iloc[i + window_size + kth_day, label_colID])
 
         # Append new data sample (feature and label) to X_data and y_data
-        X_data.append(np.array(data_feature).reshape(window_size, 6))
+        X_data.append(np.array(data_feature).reshape(window_size, 6)) # TO DO: adjust these param
         y_data.append(np.array(data_label))
     return X_data, y_data
 
