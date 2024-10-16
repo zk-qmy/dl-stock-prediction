@@ -1,7 +1,8 @@
 "dl-stock-prediction" 
 
 # Tentative Project Structure
-your-project/
+```
+dl-stock-prediction/
 │
 ├── data/                  
 │   ├── nasdaq/           
@@ -44,7 +45,7 @@ your-project/
 ├── README.md              
 ├── .gitignore             
 └── LICENSE                
-
+```
 #Setup
 ## 1. Streamlit
 On terminal
