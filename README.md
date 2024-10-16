@@ -45,3 +45,17 @@ your-project/
 ├── .gitignore             
 └── LICENSE                
 
+#Setup
+## 1. Streamlit
+On terminal
+```
+pip install streamlit
+```
+Navigate to the project folder
+```
+.\venv\Scripts\activate.bat
+```
+run the app.py
+```
+streamlit run deployment app.py
+```
