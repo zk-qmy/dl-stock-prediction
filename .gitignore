@@ -73,3 +73,5 @@ models/*.pt        # Example for PyTorch models
 #!data/sample_template.csv
 # Logs
 logs/
+#database
+database.sql

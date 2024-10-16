@@ -10,7 +10,7 @@ engine = get_db_engine(config)
 # Path to the folder containing CSV files
 folder_path = config['data']['vn_230228_path']  # Change to  a test path in 'data' field for test 
 db_name = config["database"]["dbname"]
-table_name = config["tables"]["vn"]  # Change to a test table in 'tables' field for test DB 
+table_name = config["tables"]["testvn"]  # Change to a test table in 'tables' field for test DB 
 
 insert_to_sql(folder_path, engine, table_name)
 with engine.connect() as connection:
