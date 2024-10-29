@@ -1,30 +1,15 @@
 import pandas as pd
 import os
-import datetime
+from datetime import datetime
 from sqlalchemy import inspect
-import logging
-import os
+from src.Logger import Logger
+
 # pip install SQLAlchemy
 # pip install pyyaml
 # pip install MySQL Driver
 # pip install PyMySQL
 
-
-def get_log():
-    # log directory
-    log_dir = r"logs/"
-    # create new log file if not exist
-    os.makedirs(log_dir, exist_ok=True)
-    # log file path
-    log_filename = f"toSQLWarning_{datetime.now().strftime('%%d%%m%%Y_%%H%%M%%S')}.log"
-    log_path = os.path.join(log_dir, log_filename)
-    # configure the logging
-    logging.basicConfig(
-        filename=log_path,
-        filemode="a",  # use "a" to append to the log file
-        format=r"%(asctime)s - %(levelname)s - %(message)s",
-        level=logging.Warning
-    )
+logging = Logger("dataToSQL")
 
 
 def get_data(connection, db_name, table_name):
@@ -45,10 +30,10 @@ def get_data(connection, db_name, table_name):
         if not df.empty:
             return df
         else:
-            logging.info("get_data() - dataFrame Empty!")
+            logging.log_info("get_data() - dataFrame Empty!")
             # print("Data not found!")
     except Exception as e:
-        logging.error(f"get_data() - Exception: {e}")
+        logging.log_error(f"get_data() - Exception: {e}")
         raise
 
 
@@ -80,12 +65,12 @@ def insert_to_sql(folder_path, engine, table_name):
                             if "TradingDate" in df.columns:
                                 df["date"] = pd.to_datetime(df["TradingDate"],
                                                             dayfirst=False,
-                                                            errors="coerce")
+                                                            log_errors="coerce")
                                 df.drop(columns=["TradingDate"], inplace=True)
                             elif "Date" in df.columns:
                                 df["date"] = pd.to_datetime(df["Date"],
                                                             dayfirst=False,
-                                                            errors="coerce")
+                                                            log_errors="coerce")
                                 df.drop(columns=["Date"], inplace=True)
                             else:
                                 isDateColEmpty = True
@@ -99,7 +84,7 @@ def insert_to_sql(folder_path, engine, table_name):
                                     r"%Y-%m-%d")
                             drop_invalid_date(df, file)
                         except Exception as e:
-                            print(f"Error converting Date for {file}: {e}")
+                            print(f"log_error converting Date for {file}: {e}")
                             # raise
                             continue
                         # Rename columns to align with the table in SQL DB
@@ -129,16 +114,16 @@ def insert_to_sql(folder_path, engine, table_name):
                                          file)
 
                     except Exception as e:
-                        logging.error(f"insert_to_sql()- Exception: {e}")
+                        logging.log_error(f"insert_to_sql()- Exception: {e}")
                         raise
             print("Data insertion complete.")
     except FileNotFoundError as e:
-        logging.error(f"insert_to_sql() - FileNotFound: {e}")
+        logging.log_error(f"insert_to_sql() - FileNotFound: {e}")
         raise
     except Exception as e:
-        logging.error(
-            f"insert_to_sql() - Exception: error during insertion {e}")
-        # print(f"Error during insertion: {e}")
+        logging.log_error(
+            f"insert_to_sql() - Exception: log_error during insertion {e}")
+        # print(f"log_error during insertion: {e}")
         raise
 
 
@@ -150,7 +135,7 @@ def insert_df_to_sql(df, table_name, connection, company_ticker, file):
         print(
             f"Inserted data for {company_ticker} into DB.")
     else:
-        logging.info(
+        logging.log_info(
             f"insert_df_to_sql() - DF is empty after processing {file}. Skipping!")
         # print(f"DF is empty after processing {file}. Skipping!")
 
@@ -177,7 +162,7 @@ def drop_invalid_date(df, file):
     # Check for bad dates
     invalid_dates = df[df["date"].isna()]
     if not invalid_dates.empty:
-        logging.info(
+        logging.log_info(
             f"drop_invalid_date() - Warning: {len(invalid_dates)} invalid dates in {file}")
         # print(
         #    f"Warning: {len(invalid_dates)} invalid dates in {file}")

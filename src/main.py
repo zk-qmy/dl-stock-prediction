@@ -8,9 +8,9 @@ import os
 config = load_config()
 engine = get_db_engine(config)
 # Path to the folder containing CSV files
-folder_path = config['data']['vn_230228_path']  # Change to  a test path in 'data' field for test 
+folder_path = config['data']["test_path_vn"]  # Change to  a test path in 'data' field for test  'vn_230228_path'
 db_name = config["database"]["dbname"]
-table_name = config["tables"]["testvn"]  # Change to a test table in 'tables' field for test DB 
+table_name = config["tables"]["test"]  # Change to a test table in 'tables' field for test DB
 
 insert_to_sql(folder_path, engine, table_name)
 with engine.connect() as connection:
@@ -26,7 +26,7 @@ if not os.path.exists(directory):
     os.makedirs(directory)
 
 # Save DataFrame as CSV
-df.to_csv(os.path.join(directory, 'vn_selected.csv'), index=False)
+df.to_csv(os.path.join(directory, 'vn_test_selected.csv'), index=False)
 
 
 # TRAIN MODEL

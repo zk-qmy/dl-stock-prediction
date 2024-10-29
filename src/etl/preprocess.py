@@ -1,4 +1,5 @@
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import TimeSeriesSplit
 import numpy as np
 
 
@@ -51,10 +52,12 @@ def get_data_samples_kth_day(df, kth_day,
                 df.iloc[i + j, feature_slice].to_numpy().tolist())
 
         # Next value is the label (price of the next day) to be predicted
-        data_label.append(df.iloc[i + window_size + kth_day, label_colID])
+        data_label.append(df.iloc[i + window_size + kth_day-1, label_colID])
 
         # Append new data sample (feature and label) to X_data and y_data
-        X_data.append(np.array(data_feature).reshape(window_size, 6)) # TO DO: adjust these param
+        X_data.append(np.array(data_feature).reshape(window_size,
+                                                     get_num_features(
+                                                         feature_slice, df)))
         y_data.append(np.array(data_label))
     return X_data, y_data
 
@@ -67,7 +70,7 @@ def get_data_samples_ks_day(df, k_days_ahead,
     '''Predict label value of the next kth day based on multiple feature
     params:
         df: dataframe
-        k_days_ahead: predict for the kth day
+        k_days_ahead: predict for k days ahead
         feature_slice: the slice of the features,
             i.e, slice(a,b) for multi-feature
             i.e, a for one feature, with a is the index of the label column
@@ -92,6 +95,20 @@ def get_data_samples_ks_day(df, k_days_ahead,
             df.iloc[(i+window_size):(i+window_size+k_days_ahead), label_colID])
 
         # Append new data sample (feature and label) to X_data and y_data
-        X_data.append(np.array(data_feature).reshape(window_size, 6))
+        X_data.append(np.array(data_feature).reshape(window_size,
+                                                     get_num_features(
+                                                         feature_slice, df)))
         y_data.append(np.array(data_label).reshape(k_days_ahead,))
     return X_data, y_data
+
+
+def get_num_features(feature_slice, df):
+    if feature_slice.start is None and feature_slice.stop is None:
+        num_columns = len(df.columns)
+    elif feature_slice.stop is None:
+        num_columns = len(df.columns) - feature_slice.start
+    elif feature_slice.start is None:
+        num_columns = feature_slice.stop
+    else:
+        num_columns = feature_slice.stop - feature_slice.start
+    return num_columns
