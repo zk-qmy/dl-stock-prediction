@@ -30,11 +30,10 @@ def get_data_samples_kth_day(df, kth_day,
     # Split the dataset into time windows to get data samples.
     '''Predict label value of the next kth day based on multiple feature
     params:
-        df: dataframe
+        df: dataFrame
         kth_day: predict for the kth day
         feature_slice: the slice of the features,
             i.e, slice(a,b) for multi-feature
-            i.e, a for one feature, with a is the index of the label column
         window_size: the number of data points considered at a time
         label_colID: the column index of the label
        '''
@@ -73,7 +72,6 @@ def get_data_samples_ks_day(df, k_days_ahead,
         k_days_ahead: predict for k days ahead
         feature_slice: the slice of the features,
             i.e, slice(a,b) for multi-feature
-            i.e, a for one feature, with a is the index of the label column
         window_size: the number of data points considered at a time
         label_colID: the column index of the label
        '''

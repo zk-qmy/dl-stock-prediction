@@ -1,7 +1,8 @@
 import unittest
 import pandas as pd
 import numpy as np
-from src.etl.preprocess import get_data_samples_ks_day, get_data_samples_kth_day, get_num_features, split_data
+from src.etl.preprocess import get_data_samples_ks_day, split_data
+from src.etl.preprocess import get_data_samples_kth_day, get_num_features
 # python -m unittest discover -s test/etl -p "test_preprocess.py"
 
 
