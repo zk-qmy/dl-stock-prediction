@@ -26,13 +26,17 @@ your-project/
 │   │     
 │   ├── preprocessing/
 |   |	├── load_data.py
+|   |   ├── prepare_data.py   
 |   |   ├── preprocess.py   
 │   │   └── data_to_sql.py   
 │   ├── models/            
 │   ├── evaluation/        
 │   │   └── evaluate.py    
-│   └── utils/
-│       └── db_connection.py          
+│   ├── utils/
+│   │   └── db_connection.py
+│   ├── Logger.py       
+│   │      
+│   └── main.py         
 │
 ├── deployment/
 |    ├── api.py

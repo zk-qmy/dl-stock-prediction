@@ -56,6 +56,10 @@ class TestPreprocess(unittest.TestCase):
             slice(None, 4), self.df), 4)  # Expect 4 features
         self.assertEqual(get_num_features(slice(None, None),
                          self.df), 7)  # Expect all features
+        self.assertEqual(get_num_features(
+            slice(None, -2), self.df), 5)
+        self.assertEqual(get_num_features(
+            slice(-5, -2), self.df), 3)
 
 
 if __name__ == "__main__":

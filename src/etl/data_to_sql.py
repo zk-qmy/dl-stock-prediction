@@ -99,7 +99,7 @@ def insert_to_sql(folder_path, engine, table_name):
                                             "volume", "high", "close",
                                             "adjustedclose"]
                         # Check the DataFrame before insertion
-                        # print(f"Final columns for insertion in {file}: {df.columns.tolist()}")
+                        # print(f"Final cols to insert in {file}: {df.columns.tolist()}")
 
                         matching_cols = get_matching_cols(df, sql_columns,
                                                           new_column_order,
@@ -110,8 +110,8 @@ def insert_to_sql(folder_path, engine, table_name):
                             continue
                         df = df[matching_cols]
                         insert_df_to_sql(df, table_name,
-                                         connection, company_ticker,
-                                         file)
+                                         connection, file,
+                                         company_ticker=company_ticker)
 
                     except Exception as e:
                         logging.log_error(f"insert_to_sql()- Exception: {e}")
@@ -127,7 +127,7 @@ def insert_to_sql(folder_path, engine, table_name):
         raise
 
 
-def insert_df_to_sql(df, table_name, connection, company_ticker, file):
+def insert_df_to_sql(df, table_name, connection, file, company_ticker=None):
     """Insert data to SQL database"""
     if not df.empty:
         df.to_sql(table_name, con=connection,
@@ -136,7 +136,8 @@ def insert_df_to_sql(df, table_name, connection, company_ticker, file):
             f"Inserted data for {company_ticker} into DB.")
     else:
         logging.log_info(
-            f"insert_df_to_sql() - DF is empty after processing {file}. Skipping!")
+            "insert_df_to_sql() - DF is empty"
+            + f"after processing {file}. Skipping!")
         # print(f"DF is empty after processing {file}. Skipping!")
 
 
@@ -163,7 +164,8 @@ def drop_invalid_date(df, file):
     invalid_dates = df[df["date"].isna()]
     if not invalid_dates.empty:
         logging.log_info(
-            f"drop_invalid_date() - Warning: {len(invalid_dates)} invalid dates in {file}")
+            "drop_invalid_date() - Warning: "
+            + f"{len(invalid_dates)} invalid dates in {file}")
         # print(
         #    f"Warning: {len(invalid_dates)} invalid dates in {file}")
     # Drop row with missing date

@@ -1,11 +1,12 @@
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.layers import Dropout
-from tensorflow.keras.optimizers import Adam, SGD
-from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
+from tensorflow.keras.optimizers import Adam, SGD, Nadam
+from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+from tensorflow.keras.callbacks import ModelCheckpoint
 import tensorflow as tf
 from utils.db_connection import load_config
-from utils.logger import Logger
+from ..Logger import Logger
 
 
 class Trainer:
@@ -32,6 +33,8 @@ class Trainer:
 
         if optimizer_name == "adam":
             optimizer = Adam(learning_rate=learning_rate)
+        elif optimizer_name == "nadam":
+            optimizer = Nadam(learning_rate=learning_rate)
         elif optimizer_name == "sgd":
             optimizer = SGD(learning_rate=learning_rate)
         else:

@@ -94,10 +94,10 @@ def get_signal_date_n_price(y_pred_denorm, df):
         start=last_date, periods=look_ahead + 1, freq='D')[1:]  # Exclude the start date
     # Create a pandas Series to map the predicted values to the corresponding dates
     future_prices = pd.Series(y_pred_flat, index=future_dates)
-    # Get the index of the best (highest) predicted return
+
     # Find the index of the best predicted return
-    best_buy_day_index = np.argmax(y_pred_flat)
-    best_sell_day_index = np.argmin(y_pred_flat)  # Find index of lowest price
+    best_buy_day_index = np.argmin(y_pred_flat)  # Find the index of lowest price
+    best_sell_day_index = np.argmax(y_pred_flat)  # Find index of highest price
     # Get the best buy date (the date corresponding to the highest predicted return)
     best_buy_date = future_dates[best_buy_day_index]
     best_sell_date = future_dates[best_sell_day_index]

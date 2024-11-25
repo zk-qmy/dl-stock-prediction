@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import TimeSeriesSplit
+# from sklearn.model_selection import TimeSeriesSplit
 import numpy as np
 
 
@@ -25,8 +25,8 @@ def split_data(X_data, y_data, test_size=0.2, val_size=0.2):
 
 def get_data_samples_kth_day(df, kth_day,
                              feature_slice,
-                             window_size=30,
-                             label_colID=3):
+                             label_colID,
+                             window_size=30):
     # Split the dataset into time windows to get data samples.
     '''Predict label value of the next kth day based on multiple feature
     params:
@@ -63,14 +63,15 @@ def get_data_samples_kth_day(df, kth_day,
 
 def get_data_samples_ks_day(df, k_days_ahead,
                             feature_slice,
-                            window_size=30,
-                            label_colID=3):
+                            label_colID,
+                            window_size=30):
     # Split the dataset into time windows to get data samples.
     '''Predict label value of the next kth day based on multiple feature
     params:
-        df: dataframe
+        df: dataFrame
         k_days_ahead: predict for k days ahead
-        feature_slice: the slice of the features,
+        feature_slice: the slice of the features
+            (the range of all feature cols),
             i.e, slice(a,b) for multi-feature
         window_size: the number of data points considered at a time
         label_colID: the column index of the label
@@ -101,12 +102,5 @@ def get_data_samples_ks_day(df, k_days_ahead,
 
 
 def get_num_features(feature_slice, df):
-    if feature_slice.start is None and feature_slice.stop is None:
-        num_columns = len(df.columns)
-    elif feature_slice.stop is None:
-        num_columns = len(df.columns) - feature_slice.start
-    elif feature_slice.start is None:
-        num_columns = feature_slice.stop
-    else:
-        num_columns = feature_slice.stop - feature_slice.start
+    num_columns = len(df.columns[feature_slice])
     return num_columns
