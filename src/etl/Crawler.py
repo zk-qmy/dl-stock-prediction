@@ -1,7 +1,7 @@
 import sys
 import pandas as pd
 from datetime import datetime
-from vnstock import listing_companies, financial_ratio, stock_historical_data
+from vnstock import listing_companies, stock_historical_data
 from src.Logger import logging
 from src.Exception import CustomException
 from src.etl.SQLManager import SQLManager
@@ -17,35 +17,6 @@ class Crawler:
         print("init Crawler!")
         self.sql_manager = SQLManager()
         print("inited SQL manager from crawler!")
-
-    def crawl_raw_financial_vn(self):
-        logging.info("Enter Crawler - crawl_raw_financial_vn()")
-
-        companies_df = listing_companies()
-        company_tickers = companies_df["ticker"]
-        company_stock_exchanges = companies_df["comGroupCode"]
-
-        # Some crawlings failed due to no financial ratio in the past
-        for i in range(len(company_tickers)):
-            try:
-                logging.info(f"Processing({i}) {company_tickers[i]}")
-                logging.info(f"Crawling raw financial: {company_tickers[i]}")
-                df_financial_ratio = financial_ratio(
-                    company_tickers[i], 'quarterly', True)
-                logging.info("Finish crawling!")
-
-                df_financial_ratio["ticker"] = company_tickers[i]
-                df_financial_ratio["comGroupCode"] = company_stock_exchanges[i]
-                logging.info(df_financial_ratio)
-                # insert data to SQL database
-                logging.info("Start creating table in db")
-                self.sql_manager.create_table_from_df(
-                    df_financial_ratio, "financial")
-                logging.info(f"Finish staging for {company_tickers[i]}!")
-            except Exception as e:
-                logging.error(
-                    f"Error processing financial: {company_tickers[i]}: {e}")
-                raise CustomException(e, sys)
 
     def crawl_raw_historical_vn(self):
         logging.info("Enter Crawler - crawl_raw_historical_vn()")
@@ -97,7 +68,7 @@ class Crawler:
                         errors="coerce"
                     )
 
-                df_stock_historical_data["ticker"] = company_tickers[i]
+                # df_stock_historical_data["ticker"] = company_tickers[i]
                 df_stock_historical_data["comGroupCode"] = company_stock_exchanges[i]
                 # logging.info(df_stock_historical_data)
                 # insert data to SQL database
@@ -105,7 +76,6 @@ class Crawler:
                 table_name = "historicalStock"
                 self.sql_manager.create_table_from_df(df_stock_historical_data,
                                                       table_name=table_name)
-                print("inserting data")
                 self.sql_manager.insert_data_from_df(df_stock_historical_data,
                                                      table_name=table_name)
                 logging.info(

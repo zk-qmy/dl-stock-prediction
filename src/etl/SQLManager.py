@@ -1,28 +1,28 @@
-# from src.utils.db_connection import SQLConnection
-from sqlalchemy import create_engine, exc
 import yaml
-import mysql.connector
-from src.Logger import logging
+import sys
 import pandas as pd
+from sqlalchemy import create_engine, exc, text
+from src.Logger import logging
+from src.Exception import CustomException
 
 
 class SQLConnection:
     def __init__(self, config_path="config.yaml"):
         print("init SQLConnection")
         self.config = self.load_config(config_path)
-        self.connection = None
+        self.engine = None
 
     def load_config(self, config_path):
         try:
             with open(config_path, 'r') as file:
                 config = yaml.safe_load(file)
                 return config
-        except FileNotFoundError:
-            print(f"Error: {config_path} not found")
-            exit(1)
+        except FileNotFoundError as e:
+            logging.info(f"Error: {config_path} not found")
+            raise CustomException(e, sys)
         except yaml.YAMLError as e:
-            print(f"Error reading file: {e}")
-            exit(1)
+            logging.info(f"Error reading file: {e}")
+            raise CustomException(e, sys)
 
     def get_db_engine(self):
         # Setup DB connection
@@ -35,48 +35,42 @@ class SQLConnection:
                                    f"{db_config['dbname']}")
             return engine
         except exc.SQLAlchemyError as e:
-            print(f"Database Connecting failed: {e}")
-            exit(1)
+            logging.info(f"Database Connecting failed: {e}")
+            raise CustomException(e, sys)
 
     def get_db_connection(self):
         print("get into get_db_connection!")
-        # Check if connection is already established
-        if self.connection is not None and self.connection.is_connected():
-            print("Connection already established.")
-            return self.connection
+        if self.engine is None:
+            self.engine = self.get_db_engine()
 
         try:
-            print("start assign config!")
-            db_config = self.config['database']
-            print(db_config['host'])
-            self.connection = mysql.connector.connect(
-                host=db_config['host'],
-                port=db_config['port'],
-                user=db_config['username'],
-                password=db_config['password'],
-                database=db_config['dbname'],
-                connection_timeout=60)
-            if self.connection.is_connected():
-                logging.info("Connected to database!")
-                print("Connection successful!")
-                return self.connection
-            else:
-                logging.info("Failed to connect ot MySQL.")
-                print("Failed to connect ot MySQL.")
-        except mysql.connector.Error as e:
-            print(f"Error getting connection!Error: {e}")
-            raise Exception  # raise custom exception
-        except Exception as e:
-            print(f"Exception: {e}")
+            connection = self.engine.connect()
+            logging.info("Connected to database!")
+            print("database connected")
+            return connection
+        except exc.SQLAlchemyError as e:
+            logging.error(f"Database Connection failed: {e}")
+            raise CustomException(e, sys)
 
 
 class SQLManager:
     def __init__(self):
         print("init SQLManager")
-        self.connection = SQLConnection().get_db_connection()
+        self.connection = SQLConnection().get_db_engine()
         print("Done getting connection from SQL Manager!")
 
+    def check_table_exists(self, table_name):
+        query = f"SHOW TABLES LIKE '{table_name}'"
+        with self.connection.connect() as conn:
+            result = conn.execute(text(query)).fetchone()
+        return result is not None
+
     def create_table_from_df(self, df, table_name):
+        if self.check_table_exists(table_name):
+            logging.info(f"Table `{table_name}` already exists.")
+            return True
+
+        table_name = table_name.lower()
         # Mapping data type between df and sql
         mapping = {
             "int64": "BIGINT",
@@ -85,6 +79,10 @@ class SQLManager:
             "datetime64[ns]": "DATE",
             "bool": "BOOLEAN"
         }
+        # Validation
+        if df.empty:
+            logging.info("Error: DataFrame is empty.")
+            return False
 
         # Create query
         columns = []
@@ -98,36 +96,35 @@ class SQLManager:
             );
             """
         # Execute query
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(create_table_query)
-            self.connection.commit()
-            print(f"table {table_name} created!!")
-            # self.insert_data_from_df(df, table_name)
-        except Exception as e:
-            print(f"Error creating table. {e}")
-        finally:
-            cursor.close()
+        with self.connection.connect() as conn:
+            try:
+                conn.execute(text(create_table_query))
+                # Log the query for debugging
+                logging.info(f"Generated query:\n{create_table_query}")
+                logging.info(f"Table {table_name} created!")
+                return True
+            except Exception as e:
+                logging.info(f"Error creating table `{table_name}`: {e}")
+                return False
 
     def insert_data_from_df(self, df, table_name):
+        table_name = table_name.lower()
         if df.empty:
-            print("Error: DataFrame is empty.")
-            return
+            logging.info("Error: DataFrame is empty.")
+            return False
 
-        cursor = self.connection.cursor()
-        for i, row in df.iterrows():
-            insert_query = f"""
-            INSERT INTO `{table_name}` ({', '.join(df.columns)})
-            VALUES ({', '.join(['%s'] * len(row))});
-            """
-            try:
-                cursor.execute(insert_query, tuple(row))
-                self.connection.commit()
-            except Exception as e:
-                print(f"Error inserting data: {e}")
-                self.connection.rollback()  # Rollback if there's an error
-        print("data inserted!")
-        cursor.close()
+        try:
+            # Use SQLAlchemy's `to_sql` for bulk insert
+            df.to_sql(
+                table_name,
+                self.connection,
+                if_exists="append",
+                index=False)
+            logging.info(f"Data inserted into `{table_name}` successfully!")
+            return True
+        except Exception as e:
+            logging.info(f"Error inserting data into `{table_name}`: {e}")
+            return False
 
     def close_connection(self):
         if self.connection and self.connection.is_connected():
@@ -139,14 +136,16 @@ class SQLManager:
 if __name__ == "__main__":
     # Sample DataFrame
     df = pd.DataFrame({
-        "id": [1, 2, 3, 4],
-        "name": ["Alice", "Bob", "Charlie", "Pudding"],
-        "salary": [1000.5, 1500.75, 2000.0, 2012.3],
-        "is_active": [True, False, True, False],
-        "hire_date": pd.to_datetime(["2020-01-01", "2019-05-15", "2018-07-30", "2021-02-10"])
+        "id": [1, 2, 3, 4, 5],
+        "name": ["Alice", "Bob", "Charlie", "Pudding", "Cake"],
+        "salary": [1000.5, 1500.75, 2000.0, 2012.3, 20110.2],
+        "is_active": [True, False, True, False, True],
+        "hire_date": pd.to_datetime(["2020-01-01", "2019-05-15", "2018-07-30", "2021-02-10", "2011-01-20"])
     })
 
-    table_name = "Employee"
+    table_name = "employees"
     manager = SQLManager()
     if (manager.create_table_from_df(df, table_name)):
         print("Successfully create table")
+    if (manager.insert_data_from_df(df, table_name)):
+        print("Successfully insert data!")
