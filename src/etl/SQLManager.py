@@ -1,6 +1,7 @@
 import yaml
 import sys
 import pandas as pd
+import datetime
 from sqlalchemy import create_engine, exc, text
 from src.Logger import logging
 from src.Exception import CustomException
@@ -65,6 +66,78 @@ class SQLManager:
             result = conn.execute(text(query)).fetchone()
         return result is not None
 
+    def create_metadata_table(self, table_name="crawl_metadata"):
+        if self.check_table_exists(table_name):
+            logging.info(f"Table `{table_name}` already exists.")
+            return True
+
+        query = """CREATE TABLE crawl_metadata (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            last_crawl_date DATE
+            );
+            """
+        # Execute query
+        with self.connection.connect() as conn:
+            try:
+                conn.execute(text(query))
+                logging.info(f"Table {table_name} created!")
+                return True
+            except Exception as e:
+                logging.info(f"Error creating table `{table_name}`: {e}")
+                return False
+
+    def update_metadata_table(self, last_crawl_date,
+                              table_name="crawl_metadata"):
+        # Check if table exist
+        if not self.check_table_exists(table_name):
+            logging.info(f"Table `{table_name}` not exist.")
+            return False
+
+        # Check date format and ensure it's a datetime object
+        try:
+            # If input is a string, convert it to a datetime object
+            if isinstance(last_crawl_date, str):
+                last_crawl_date = datetime.datetime.strptime(
+                    last_crawl_date, "%Y-%m-%d")
+        except ValueError as e:
+            logging.error(f"Invalid date format: {e}")
+            raise CustomException(f"Invalid date format: {e}", sys)
+
+        # Create query
+        query = f"""INSERT INTO {table_name} (last_crawl_date)
+            VALUES (:last_crawl_date);
+            """
+        # Execute query
+        with self.connection.connect() as conn:
+            try:
+                conn.execute(text(query),
+                             {'last_crawl_date': last_crawl_date.strftime('%Y-%m-%d')})
+                logging.info(f"Table {table_name} updated!")
+                return True
+            except Exception as e:
+                logging.info(f"Error updating table `{table_name}`: {e}")
+                return False
+
+    def get_latest_crawl_date(self, table_name="crawl_metadata"):
+        query = f"""SELECT last_crawl_date FROM {table_name}
+            ORDER BY last_crawl_date DESC
+            LIMIT 1"""
+        # Execute query
+        with self.connection.connect() as conn:
+            try:
+                result = conn.execute(text(query)).fetchone()
+                if result:
+                    # Assuming the date is the first column in the result
+                    latest_crawl_date = result[0]
+                    logging.info(f"Latest crawl date: {latest_crawl_date}")
+                    return latest_crawl_date
+                else:
+                    logging.info(f"No data found in table {table_name}")
+                    return None
+            except Exception as e:
+                logging.error(f"Error retrieving from `{table_name}`: {e}")
+                return None
+
     def create_table_from_df(self, df, table_name):
         if self.check_table_exists(table_name):
             logging.info(f"Table `{table_name}` already exists.")
@@ -99,7 +172,7 @@ class SQLManager:
         with self.connection.connect() as conn:
             try:
                 conn.execute(text(create_table_query))
-                # Log the query for debugging
+                logging.info("Start creating table in db")
                 logging.info(f"Generated query:\n{create_table_query}")
                 logging.info(f"Table {table_name} created!")
                 return True
@@ -107,7 +180,7 @@ class SQLManager:
                 logging.info(f"Error creating table `{table_name}`: {e}")
                 return False
 
-    def insert_data_from_df(self, df, table_name):
+    def insert_data_from_df(self, df, table_name, chunksize=1000):
         table_name = table_name.lower()
         if df.empty:
             logging.info("Error: DataFrame is empty.")
@@ -119,7 +192,8 @@ class SQLManager:
                 table_name,
                 self.connection,
                 if_exists="append",
-                index=False)
+                index=False,
+                chunksize=chunksize)
             logging.info(f"Data inserted into `{table_name}` successfully!")
             return True
         except Exception as e:
@@ -140,7 +214,10 @@ if __name__ == "__main__":
         "name": ["Alice", "Bob", "Charlie", "Pudding", "Cake"],
         "salary": [1000.5, 1500.75, 2000.0, 2012.3, 20110.2],
         "is_active": [True, False, True, False, True],
-        "hire_date": pd.to_datetime(["2020-01-01", "2019-05-15", "2018-07-30", "2021-02-10", "2011-01-20"])
+        "hire_date": pd.to_datetime([
+            "2020-01-01", "2019-05-15", "2018-07-30",
+            "2021-02-10", "2011-01-20"
+        ])
     })
 
     table_name = "employees"

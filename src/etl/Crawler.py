@@ -6,9 +6,9 @@ from src.Logger import logging
 from src.Exception import CustomException
 from src.etl.SQLManager import SQLManager
 
-# TO DO: crawl the newest data + incrementally crawl and store data
+# TO DO: crawl the newest data + incrementally crawl and store data: store the global date(min) in the table to start crawl from that date next time
 # TO DO: versoning data
-# TO DO: database tables: staging table-insert data from csv file,
+# TO DO: database tables: staging table- store raw crawl data
 # backup table-store backup data, main table-store final data(processed)
 
 
@@ -26,6 +26,8 @@ class Crawler:
         company_stock_exchanges = companies_df["comGroupCode"]
 
         # Ensure start and end dates are in the correct format (YYYY-MM-DD)
+        # TO DO: set default start date to 2000-01-01
+        # TO DO: update the start day by getting the lastest date from metadata table
         start_date = "2000-01-01"
         today = datetime.today()
         end_date = today.strftime('%Y-%m-%d')  # Convert to string 'YYYY-MM-DD'
@@ -40,18 +42,20 @@ class Crawler:
             logging.error(f"Invalid date format: {e}")
             raise CustomException(f"Invalid date format: {e}", sys)'''
 
+        # TO DO: create meta table
+        
+        # Start the loop
         for i in range(len(company_tickers)):
             try:
-                logging.info(f"Start crawling({i}) {company_tickers[i]}")
+                # logging.info(f"Start crawling({i}) {company_tickers[i]}")
                 # Craw data from start date to end date
                 df_stock_historical_data = stock_historical_data(
                     symbol=company_tickers[i],
                     start_date=start_date, end_date=end_date)
-                logging.info("Finish crawling!")
+                # logging.info(f"Finish crawling {company_tickers[i]}!")
                 if df_stock_historical_data.empty:
                     logging.warning(f"No data for {company_tickers[i]}")
                     continue
-                # logging.info(df_stock_historical_data)
                 if ("date" in df_stock_historical_data.columns):
                     df_stock_historical_data["date"] = pd.to_datetime(
                         df_stock_historical_data["date"],
@@ -68,11 +72,8 @@ class Crawler:
                         errors="coerce"
                     )
 
-                # df_stock_historical_data["ticker"] = company_tickers[i]
-                df_stock_historical_data["comGroupCode"] = company_stock_exchanges[i]
-                # logging.info(df_stock_historical_data)
+                df_stock_historical_data["code"] = company_stock_exchanges[i]
                 # insert data to SQL database
-                logging.info("Start creating table in db")
                 table_name = "historicalStock"
                 self.sql_manager.create_table_from_df(df_stock_historical_data,
                                                       table_name=table_name)
@@ -84,6 +85,11 @@ class Crawler:
                 logging.error(
                     f"Error processing historical {company_tickers[i]}: {e}")
                 raise CustomException(e, sys)
+        # TO DO: logic to get the latest_crawl date
+        # TO DO: insert the latest crawl date to meta table
+        # self.sql_manager.update_metadata_table(lastest_crawl_date)
+        # TO DO: compare and insert data in staging to main ?
+        # TO DO: backup data
         self.sql_manager.close_connection()
 
 

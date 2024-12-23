@@ -9,9 +9,9 @@ import charts
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 # Paths
-feature_scalers_path = "src\\models\\vn\\task3_feature_scalers.pkl"
-y_scaler_path = "src\\models\\vn\\task3_y_scaler.pkl"
-model_path = r"src\models\vn\3.1_7days_close_model_gru_ts.keras"
+feature_scalers_path = "models\\vn\\task3_feature_scalers.pkl"
+y_scaler_path = "models\\vn\\task3_y_scaler.pkl"
+model_path = r"models\vn\3.1_7days_close_model_gru_ts.keras"
 data_folder_path = "data\\raw\\data-vn-20230228\\data-vn-20230228\\stock-historical-data"
 
 # Set up the title
