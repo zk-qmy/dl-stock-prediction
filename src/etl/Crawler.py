@@ -1,6 +1,6 @@
 import sys
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from vnstock import listing_companies, stock_historical_data
 from src.Logger import logging
 from src.Exception import CustomException
@@ -18,6 +18,17 @@ class Crawler:
         self.sql_manager = SQLManager()
         print("inited SQL manager from crawler!")
 
+    def get_last_crawl_date(self):
+        default_date = "2000-01-01"
+        try:
+            last_crawl_date = self.sql_manager.fetch_latest_crawl_date()
+            if last_crawl_date:
+                return last_crawl_date
+            return default_date
+        except Exception as e:
+            logging.error(f"Error fetching last crawl date: {e}")
+            return
+
     def crawl_raw_historical_vn(self):
         logging.info("Enter Crawler - crawl_raw_historical_vn()")
 
@@ -26,9 +37,13 @@ class Crawler:
         company_stock_exchanges = companies_df["comGroupCode"]
 
         # Ensure start and end dates are in the correct format (YYYY-MM-DD)
-        # TO DO: set default start date to 2000-01-01
-        # TO DO: update the start day by getting the lastest date from metadata table
-        start_date = "2000-01-01"
+        # Get start date: the latest_crawl date - 3days. IF SCHEDULE THE CRALER
+        # TO CRAWL EVERY MONDAY THEN DO NOT NEED TO CRAWL DATA FROM 3 DAYS AHEAD
+        # Calculate the previous 3rd day
+        latest_date = datetime.strptime(self.get_last_crawl_date(), "%Y-%m-%d")
+        # previous_3rd_day = latest_date - timedelta(days=3)
+        start_date = latest_date.strftime('%Y-%m-%d')
+
         today = datetime.today()
         end_date = today.strftime('%Y-%m-%d')  # Convert to string 'YYYY-MM-DD'
         logging.info(f"Crawl data from {start_date} to {end_date}.")
@@ -42,8 +57,8 @@ class Crawler:
             logging.error(f"Invalid date format: {e}")
             raise CustomException(f"Invalid date format: {e}", sys)'''
 
-        # TO DO: create meta table
-        
+        # Create meta table
+        self.sql_manager.create_metadata_table()
         # Start the loop
         for i in range(len(company_tickers)):
             try:
@@ -53,7 +68,7 @@ class Crawler:
                     symbol=company_tickers[i],
                     start_date=start_date, end_date=end_date)
                 # logging.info(f"Finish crawling {company_tickers[i]}!")
-                if df_stock_historical_data.empty:
+                if df_stock_historical_data.empty or df_stock_historical_data is None:
                     logging.warning(f"No data for {company_tickers[i]}")
                     continue
                 if ("date" in df_stock_historical_data.columns):
@@ -85,11 +100,11 @@ class Crawler:
                 logging.error(
                     f"Error processing historical {company_tickers[i]}: {e}")
                 raise CustomException(e, sys)
-        # TO DO: logic to get the latest_crawl date
-        # TO DO: insert the latest crawl date to meta table
-        # self.sql_manager.update_metadata_table(lastest_crawl_date)
+        # Insert the latest crawl date to meta table
+        self.sql_manager.update_metadata_table(end_date)
         # TO DO: compare and insert data in staging to main ?
         # TO DO: backup data
+        # Close connection
         self.sql_manager.close_connection()
 
 
