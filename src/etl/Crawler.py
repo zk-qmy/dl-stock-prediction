@@ -8,9 +8,11 @@ from src.etl.SQLManager import SQLManager
 
 # TO DO: crawl the newest data + incrementally crawl and store data: store the global date(min) in the table to start crawl from that date next time
 # TO DO: versoning data
-# TO DO: database tables: staging table- store raw crawl data
+# TO DO: table- store raw crawl data
+# TO DO: logic to insert data from staging to main table
+# TO DO: main table
 # backup table-store backup data, main table-store final data(processed)
-
+# TO DO: create a trnasaction, if fail at any step then rolllback
 
 class Crawler:
     def __init__(self):
@@ -57,6 +59,14 @@ class Crawler:
             logging.error(f"Invalid date format: {e}")
             raise CustomException(f"Invalid date format: {e}", sys)'''
 
+        # STAGING TABLE
+        self.sql_manager.create_table_from_df(, table_name="staging")
+        self.sql_manager.insert_data_from_df(,table_name="staging")
+        # compare with main table
+        # upsert to main table
+        # create/update meta table
+        # create/update backup table
+        
         # Create meta table
         self.sql_manager.create_metadata_table()
         # Start the loop

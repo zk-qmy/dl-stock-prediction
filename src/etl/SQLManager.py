@@ -108,7 +108,8 @@ class SQLManager:
         if isinstance(last_crawl_date, str):
             # Try converting the string to datetime
             try:
-                last_crawl_date = datetime.strptime(last_crawl_date, "%Y-%m-%d")
+                last_crawl_date = datetime.strptime(
+                    last_crawl_date, "%Y-%m-%d")
                 logging.info(f"After str conversion:{last_crawl_date} ")
             except ValueError as e:
                 logging.error(f"Invalid date format {last_crawl_date}: {e}")
@@ -118,8 +119,10 @@ class SQLManager:
             last_crawl_date = last_crawl_date.strftime("%Y-%m-%d")
             logging.info(f"After object conversion: {last_crawl_date}")
         else:
-            logging.error(f"Invalid type for last_crawl_date: {type(last_crawl_date)}")
-            raise CustomException(f"Invalid type for last_crawl_date: {type(last_crawl_date)}", sys)
+            logging.error(
+                f"Invalid type for last_crawl_date: {type(last_crawl_date)}")
+            raise CustomException(
+                f"Invalid type for last_crawl_date: {type(last_crawl_date)}", sys)
 
         if (last_crawl_date is None):
             logging.info("last_crawl_date is `None`")
@@ -131,18 +134,20 @@ class SQLManager:
         # Execute query
         with self.connection.connect() as conn:
             try:
+                # Begin a transaction
+                trans = conn.begin()
                 result = conn.execute(text(query),
                                       {'last_crawl_date': last_crawl_date})
                 if result.rowcount > 0:
-                    conn.commit()
-                    logging.info(f"Successfully inserted last_crawl_date into `{table_name}`")
+                    trans.commit()
+                    logging.info(
+                        f"Successfully inserted last_crawl_date into `{table_name}`")
+                    return True
                 else:
                     logging.warning(f"No rows inserted into `{table_name}`.")
-                logging.info(f"Table `{table_name}` updated!")
-                return True
             except Exception as e:
                 logging.info(f"Error updating table `{table_name}`: {e}")
-                conn.rollback()  # Rollback in case of error
+                trans.rollback()  # Rollback in case of error
                 return False
 
     def fetch_last_crawl_date(self, table_name="crawl_metadata"):
@@ -165,7 +170,7 @@ class SQLManager:
                 logging.error(f"Error retrieving from `{table_name}`: {e}")
                 return None
 
-# Main table: Insert raw data to main table
+# Tables
     def create_table_from_df(self, df, table_name):
         if self.check_table_exists(table_name):
             logging.info(f"Table `{table_name}` already exists.")
@@ -208,32 +213,90 @@ class SQLManager:
                 logging.info(f"Error creating table `{table_name}`: {e}")
                 return False
 
+# Staging table: Insert raw data to staging table
     def insert_data_from_df(self, df, table_name, chunksize=1000):
         table_name = table_name.lower()
         if df.empty:
             logging.info("Error: DataFrame is empty.")
             return False
+        with self.connection.connect() as conn:
+            try:
+                # Begin a transaction
+                trans = conn.begin()
+                # Use SQLAlchemy's `to_sql` for bulk insert
+                df.to_sql(
+                    table_name,
+                    self.connection,
+                    if_exists="append",
+                    index=False,
+                    chunksize=chunksize)
+                trans.commit()
+                logging.info(
+                    f"Data inserted into `{table_name}` successfully!")
+                return True
+            except Exception as e:
+                trans.rollback()
+                logging.info(f"Error inserting data into `{table_name}`: {e}")
+                return False
 
-        try:
-            # Use SQLAlchemy's `to_sql` for bulk insert
-            df.to_sql(
-                table_name,
-                self.connection,
-                if_exists="append",
-                index=False,
-                chunksize=chunksize)
-            logging.info(f"Data inserted into `{table_name}` successfully!")
-            return True
-        except Exception as e:
-            logging.info(f"Error inserting data into `{table_name}`: {e}")
-            return False
+# Main table: Insert data from Staging table
+    def insert_data_from_table_to_table(self,
+                                        input_table_name,
+                                        destination_table_name,
+                                        chunksize=1000):
+        pass
 
 # Backup table: create backup table
+    def create_backup_table(self):
+        pass
+
     def close_connection(self):
         if self.connection and self.connection.is_connected():
             self.connection.close()
             print("Closed db connection!")
             logging.info("Closed database connection!")
+
+    def run_operation_groups(self):
+        # Insert/Update raw data from staging to main
+        # Insert/Update backup
+        # Create/Update meta table + clear staging
+        with self.connection.connect() as conn:
+            try:
+                # Begin a global transaction
+                trans = conn.begin()
+
+                # Operation 1: Create metadata table
+                try:
+                    self.create_metadata_table(conn)
+                except Exception as e:
+                    logging.error(f"Error in creating metadata table: {e}")
+                    trans.rollback()  # Rollback for this operation
+                    raise
+
+                # Operation 2: Insert data from DataFrame
+                try:
+                    self.insert_data_from_df(conn)
+                except Exception as e:
+                    logging.error(f"Error in inserting data: {e}")
+                    trans.rollback()  # Rollback for this operation
+                    raise
+
+                # Operation 3: Update metadata
+                try:
+                    self.update_metadata_table(conn)
+                except Exception as e:
+                    logging.error(f"Error in updating metadata: {e}")
+                    trans.rollback()  # Rollback for this operation
+                    raise
+
+                # If all operations succeed, commit the global transaction
+                trans.commit()
+
+            except Exception as e:
+                logging.error(f"Error in performing operations: {e}")
+                # Global rollback in case of any failure in the entire sequence
+                trans.rollback()
+                raise
 
 
 if __name__ == "__main__":
@@ -249,18 +312,17 @@ if __name__ == "__main__":
         ])
     })
 
+    # New DataFrame for upsert
+    df_new = pd.DataFrame({
+        "id": [6],  # Note: '3' and '4' exist in the original, '6' is new
+        "name": ["New Employee"],
+        "salary": [3000.0],
+        "is_active": [True],
+        "hire_date": pd.to_datetime([
+            "2023-11-15"
+        ])
+    })
+
     table_name = "employees"
     manager = SQLManager()
-    if (manager.create_table_from_df(df, table_name)):
-        print("Successfully create table")
-    if (manager.insert_data_from_df(df, table_name)):
-        print("Successfully insert data!")
-    if (manager.create_metadata_table()):
-        print("created meta table!")
-    if (manager.update_metadata_table("2001-01-23")):
-        (print("updated meta table"))
-    a = manager.fetch_last_crawl_date()
-    if (a):
-        print(f"Latest crawl date: {a}")
-    if (manager.check_table_exists("crawl_metadata")):
-        print("table `crawl_metadata` exist")
+    manager.perform_operations()
