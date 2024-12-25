@@ -2,7 +2,7 @@ import yaml
 import sys
 import pandas as pd
 from datetime import datetime
-from sqlalchemy import create_engine, exc, text
+from sqlalchemy import create_engine, exc, text, inspect
 from src.Logger import logging
 from src.Exception import CustomException
 
@@ -36,7 +36,7 @@ class SQLConnection:
                                             f"{db_config['host']}:{db_config['port']}/"
                                             f"{db_config['dbname']}")
             except exc.SQLAlchemyError as e:
-                logging.info(f"Database Connecting failed: {e}")
+                logging.error(f"Database Connecting failed: {e}")
                 raise CustomException(e, sys)
         return self.engine
 
@@ -59,17 +59,61 @@ class SQLManager:
         self.connection = SQLConnection().get_db_engine()
         print("Done getting connection from SQL Manager!")
 
-    def check_table_exists(self, table_name):
+    def check_table_exists(self, conn, table_name):
         query = f"SHOW TABLES LIKE '{table_name}'"
-        with self.connection.connect() as conn:
+        try:
             result = conn.execute(text(query)).fetchone()
-        return result is not None
+            if result is None:
+                return False
+            return True
+        except Exception as e:
+            raise CustomException(
+                f"Error checking `{table_name}` existence: {e}", sys)
+
+    def check_empty_table(self, conn, table_name):
+        query = text(f"SELECT COUNT(*) FROM {table_name}")
+        try:
+            table_row_count = conn.execute(query).fetchone()[0]
+            return table_row_count
+        except Exception as e:
+            logging.error(f"Error checking `{table_name}` emptiness: {e}")
+            raise CustomException(e, sys)
+
+    def truncate_table(self, conn, table_name):
+        if not self.check_table_exists(conn, table_name):
+            logging.error("Table does not exist to truncate")
+            raise CustomException("Table does not exist to truncate")
+        query = text(f"TRUNCATE TABLE {table_name}")
+        try:
+            conn.execute(query)
+            logging.info(f"Table `{table_name}` truncated successfully.")
+        except Exception as e:
+            logging.error(f"Error truncate table `{table_name}")
+            raise CustomException(e, sys)
+
+    def create_table_like(self, conn, output_table, source_table):
+        # check if source_table exist
+        if not self.check_table_exists(conn, source_table):
+            raise CustomException(
+                f"Source table `{source_table}` does not exist. Create one")
+        # check if output table already exist
+        if self.check_table_exists(conn, output_table):
+            logging.warning(f"Table `{output_table}` already exist.")
+            return
+        try:
+            query = f"CREATE TABLE {output_table} LIKE {source_table};"
+            conn.execute(text(query))
+            logging.info(
+                f"Table `{output_table}` created from `{source_table}`.")
+        except Exception as e:
+            raise CustomException(
+                f"Error creating `{output_table}` from {source_table}: {e}", sys)
 
 # Metadata table: Insert metadata
-    def create_metadata_table(self, table_name="crawl_metadata"):
-        if self.check_table_exists(table_name):
+    def create_metadata_table(self, conn, table_name="crawl_metadata"):
+        if self.check_table_exists(conn, table_name):
             logging.info(f"Table `{table_name}` already exists.")
-            return True
+            return
 
         query = """CREATE TABLE crawl_metadata (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,21 +121,20 @@ class SQLManager:
             );
             """
         # Execute query
-        with self.connection.connect() as conn:
-            try:
-                conn.execute(text(query))
-                logging.info(f"Table `{table_name}` created!")
-                return True
-            except Exception as e:
-                logging.info(f"Error creating table `{table_name}`: {e}")
-                return False
+        # with self.connection.connect() as conn:
+        try:
+            conn.execute(text(query))
+            logging.info(f"Table `{table_name}` created!")
+            return
+        except Exception as e:
+            raise CustomException(
+                f"Error creating table `{table_name}`: {e}", sys)
 
-    def update_metadata_table(self, last_crawl_date,
+    def update_metadata_table(self, conn, last_crawl_date,
                               table_name="crawl_metadata"):
         # Check if table exist
-        if not self.check_table_exists(table_name):
-            logging.info(f"Table `{table_name}` not exist.")
-            return False
+        if not self.check_table_exists(conn, table_name):
+            raise CustomException(f"Table `{table_name}` not exist.")
 
         # Check date format and ensure it's a datetime object
         '''
@@ -115,40 +158,36 @@ class SQLManager:
                 logging.error(f"Invalid date format {last_crawl_date}: {e}")
                 raise CustomException(f"Invalid date format: {e}", sys)
         elif isinstance(last_crawl_date, datetime):
-            # If it's already a datetime object, ensure it's in the correct format
+            # If it's already a datetime object, ensure it's correct format
             last_crawl_date = last_crawl_date.strftime("%Y-%m-%d")
             logging.info(f"After object conversion: {last_crawl_date}")
         else:
-            logging.error(
-                f"Invalid type for last_crawl_date: {type(last_crawl_date)}")
             raise CustomException(
-                f"Invalid type for last_crawl_date: {type(last_crawl_date)}", sys)
+                f"Invalid type for last_crawl_date: {type(last_crawl_date)}")
 
         if (last_crawl_date is None):
-            logging.info("last_crawl_date is `None`")
-            return False
+            raise CustomException("last_crawl_date is `None`")
         # Create query
         query = f"""INSERT INTO {table_name} (last_crawl_date)
             VALUES (:last_crawl_date);
             """
         # Execute query
-        with self.connection.connect() as conn:
-            try:
-                # Begin a transaction
-                trans = conn.begin()
-                result = conn.execute(text(query),
-                                      {'last_crawl_date': last_crawl_date})
-                if result.rowcount > 0:
-                    trans.commit()
-                    logging.info(
-                        f"Successfully inserted last_crawl_date into `{table_name}`")
-                    return True
-                else:
-                    logging.warning(f"No rows inserted into `{table_name}`.")
-            except Exception as e:
-                logging.info(f"Error updating table `{table_name}`: {e}")
-                trans.rollback()  # Rollback in case of error
-                return False
+        # with self.connection.connect() as conn:
+        try:
+            # Begin a transaction
+            # trans = conn.begin()
+            result = conn.execute(text(query),
+                                  {'last_crawl_date': last_crawl_date})
+            if result.rowcount > 0:
+                # trans.commit()
+                logging.info(
+                    f"Successfully inserted last_crawl_date into `{table_name}`")
+            else:
+                logging.warning(f"No rows inserted into `{table_name}`.")
+        except Exception as e:
+            logging.error(f"Error updating table `{table_name}`: {e}")
+            # trans.rollback()  # Rollback in case of error
+            raise CustomException(e, sys)
 
     def fetch_last_crawl_date(self, table_name="crawl_metadata"):
         query = f"""SELECT last_crawl_date FROM {table_name}
@@ -167,14 +206,14 @@ class SQLManager:
                     logging.info(f"No data found in table `{table_name}`")
                     return None
             except Exception as e:
-                logging.error(f"Error retrieving from `{table_name}`: {e}")
-                return None
+                raise CustomException(
+                    f"Error retrieving from `{table_name}`: {e}", sys)
 
 # Tables
-    def create_table_from_df(self, df, table_name):
-        if self.check_table_exists(table_name):
+    def create_table_from_df(self, conn, df, table_name):
+        if self.check_table_exists(conn, table_name):
             logging.info(f"Table `{table_name}` already exists.")
-            return True
+            return
 
         table_name = table_name.lower()
         # Mapping data type between df and sql
@@ -187,8 +226,7 @@ class SQLManager:
         }
         # Validation
         if df.empty:
-            logging.info("Error: DataFrame is empty.")
-            return False
+            raise CustomException("Error: DataFrame is empty.")
 
         # Create query
         columns = []
@@ -202,53 +240,99 @@ class SQLManager:
             );
             """
         # Execute query
-        with self.connection.connect() as conn:
-            try:
-                conn.execute(text(create_table_query))
-                logging.info("Start creating table `{table_name}` in db")
-                logging.info(f"Generated query:\n{create_table_query}")
-                logging.info(f"Table `{table_name}` created!")
-                return True
-            except Exception as e:
-                logging.info(f"Error creating table `{table_name}`: {e}")
-                return False
+        # with self.connection.connect() as conn:
+        try:
+            conn.execute(text(create_table_query))
+            logging.info("Start creating table `{table_name}` in db")
+            logging.info(f"Generated query:\n{create_table_query}")
+            logging.info(f"Table `{table_name}` created!")
+            return
+        except Exception as e:
+            raise CustomException(
+                f"Error creating table `{table_name}`: {e}", sys)
 
 # Staging table: Insert raw data to staging table
-    def insert_data_from_df(self, df, table_name, chunksize=1000):
+    def insert_data_from_df(self, conn, df, table_name, chunksize=1000):
         table_name = table_name.lower()
         if df.empty:
-            logging.info("Error: DataFrame is empty.")
-            return False
-        with self.connection.connect() as conn:
-            try:
-                # Begin a transaction
-                trans = conn.begin()
-                # Use SQLAlchemy's `to_sql` for bulk insert
-                df.to_sql(
-                    table_name,
-                    self.connection,
-                    if_exists="append",
-                    index=False,
-                    chunksize=chunksize)
-                trans.commit()
-                logging.info(
-                    f"Data inserted into `{table_name}` successfully!")
-                return True
-            except Exception as e:
-                trans.rollback()
-                logging.info(f"Error inserting data into `{table_name}`: {e}")
-                return False
+            raise CustomException("Error: DataFrame is empty.")
+        # with self.connection.connect() as conn:
+        try:
+            # Begin a transaction
+            # trans = conn.begin()
+            # Use SQLAlchemy's `to_sql` for bulk insert
+            df.to_sql(
+                table_name,
+                self.connection,
+                if_exists="append",
+                index=False,
+                chunksize=chunksize)
+            # trans.commit()
+            logging.info(
+                f"Data inserted into `{table_name}` successfully!")
+            return
+        except Exception as e:
+            # trans.rollback()
+            raise CustomException(
+                f"Error inserting data into `{table_name}`: {e}", sys)
 
-# Main table: Insert data from Staging table
-    def insert_data_from_table_to_table(self,
+# Main table: upsert data from Staging table to main table
+    def upsert_data_from_table_to_table(self, conn,
                                         input_table_name,
-                                        destination_table_name,
-                                        chunksize=1000):
-        pass
+                                        destination_table_name):
+        input_table_name = input_table_name.lower()
+        destination_table_name = destination_table_name.lower()
+        # check if tables exist
+        # (tb_frame error)
+        if not self.check_table_exists(conn, input_table_name):
+            raise CustomException(
+                f"Table `{input_table_name}` does not exist. Create it first!")
+        if not self.check_table_exists(conn, destination_table_name):
+            raise CustomException(
+                f"Table `{destination_table_name}` does not exist. Create it first!")
+        # check if tables empty
+        input_table_rows = self.check_empty_table(conn, input_table_name)
+        if input_table_rows < 1:
+            logging.warning(f"Warning input table {input_table_name}"
+                            + f" has {input_table_rows} rows. Skip operation!")
+            return
 
-# Backup table: create backup table
-    def create_backup_table(self):
-        pass
+        # Get column names from the destination table
+        try:
+            inspector = inspect(conn)
+            columns = [column['name']
+                       for column in inspector.get_columns(destination_table_name)]
+
+            if not columns:
+                raise CustomException(
+                    f"No columns found in destination table `{destination_table_name}`.")
+            # Generate the insert column names and VALUES() for the query
+            column_names = ', '.join(columns)
+            logging.info(f"Column names: {column_names}")
+            # Construct the SQL query with ON DUPLICATE KEY UPDATE
+            query = text(f"""
+            INSERT INTO {destination_table_name} ({column_names})
+            SELECT {', '.join(columns)} FROM {input_table_name}
+            ON DUPLICATE KEY UPDATE
+                {', '.join([f"{col} = VALUES({col})" for col in columns])};
+            """)
+            logging.info(f"Table to table upsert query: \n{query}")
+            # Execute the query
+            # with conn.begin():
+            conn.execute(query)
+            logging.info(f"{input_table_rows} data upserted"
+                         + f" from `{input_table_name}`"
+                         + f" to `{destination_table_name}` successfully!")
+
+        except CustomException as ce:
+            logging.error(f"Custom exception: {ce}")
+            raise ce
+        except Exception as e:
+            logging.error(f"Error upsert data from `{input_table_name}`"
+                          + f" to `{destination_table_name}`")
+            raise CustomException(f"Failed to upsert data: {str(e)}", sys)
+
+# Backup table: create backup + upsert using the same method as staging to main
 
     def close_connection(self):
         if self.connection and self.connection.is_connected():
@@ -256,47 +340,72 @@ class SQLManager:
             print("Closed db connection!")
             logging.info("Closed database connection!")
 
-    def run_operation_groups(self):
-        # Insert/Update raw data from staging to main
-        # Insert/Update backup
-        # Create/Update meta table + clear staging
+# Groups of operation
+    def run_group1_insert_raw_to_staging(self, df, table_name):
+        # Group 1: insert raw data to staging
         with self.connection.connect() as conn:
             try:
                 # Begin a global transaction
                 trans = conn.begin()
 
-                # Operation 1: Create metadata table
-                try:
-                    self.create_metadata_table(conn)
-                except Exception as e:
-                    logging.error(f"Error in creating metadata table: {e}")
-                    trans.rollback()  # Rollback for this operation
-                    raise
-
-                # Operation 2: Insert data from DataFrame
-                try:
-                    self.insert_data_from_df(conn)
-                except Exception as e:
-                    logging.error(f"Error in inserting data: {e}")
-                    trans.rollback()  # Rollback for this operation
-                    raise
-
-                # Operation 3: Update metadata
-                try:
-                    self.update_metadata_table(conn)
-                except Exception as e:
-                    logging.error(f"Error in updating metadata: {e}")
-                    trans.rollback()  # Rollback for this operation
-                    raise
+                # Operation 1: Create table from df
+                self.create_table_from_df(conn, df, table_name)
+                # Operation 2: Insert data from df to table
+                self.insert_data_from_df(conn, df, table_name)
 
                 # If all operations succeed, commit the global transaction
                 trans.commit()
-
             except Exception as e:
-                logging.error(f"Error in performing operations: {e}")
+                logging.error(f"Error in group 1: {e}")
                 # Global rollback in case of any failure in the entire sequence
                 trans.rollback()
-                raise
+                raise CustomException(e, sys)
+
+    def run_group2_insert_staging_to_main_n_backup(self, staging_table,
+                                                   main_table,
+                                                   backup_table):
+        # Group 2: insert new data from staging to main + backup
+        with self.connection.connect() as conn:
+            try:
+                # Begin a global transaction
+                trans = conn.begin()
+
+                # Operation 1: upsert staging data to main table
+                self.upsert_data_from_table_to_table(conn, staging_table,
+                                                     main_table)
+                # Operation 2: upsert staging data to backup table
+                self.upsert_data_from_table_to_table(conn, staging_table,
+                                                     backup_table)
+
+                # If all operations succeed, commit the global transaction
+                trans.commit()
+            except Exception as e:
+                logging.error(f"Error in group 2: {e}")
+                # Global rollback in case of any failure in the entire sequence
+                trans.rollback()
+                raise CustomException(e, sys)
+
+    def run_group3_update_meta_n_clear_staging(self, last_crawl_date,
+                                               staging_table_name):
+        # NOTICE: CREATE META TABLE BEFORE RUN THIS
+        # Group 3: update meta table + clear staging
+        with self.connection.connect() as conn:
+            try:
+                # Begin a global transaction
+                trans = conn.begin()
+
+                # Operation 1: Update meta table
+                self.update_metadata_table(conn, last_crawl_date)
+                # Operation 2: clear staging table
+                self.truncate_table(conn, staging_table_name)
+
+                # If all operations succeed, commit the global transaction
+                trans.commit()
+            except Exception as e:
+                logging.error(f"Error in group 3: {e}")
+                # Global rollback in case of any failure in the entire sequence
+                trans.rollback()
+                raise CustomException(e, sys)
 
 
 if __name__ == "__main__":
@@ -323,6 +432,25 @@ if __name__ == "__main__":
         ])
     })
 
-    table_name = "employees"
+    staging_table_name = "staging_employees"
+    main_table_name = "main_employees"
+    backup_table_name = "backup_employees"
     manager = SQLManager()
-    manager.perform_operations()
+    try:
+        manager.run_group1_insert_raw_to_staging(df, staging_table_name)
+        print("Done group 1")
+        with manager.connection.connect() as connection:
+            manager.create_table_like(
+                connection, main_table_name, staging_table_name)
+            manager.create_table_like(
+                connection, backup_table_name, main_table_name)
+            manager.create_metadata_table(connection)
+        manager.run_group2_insert_staging_to_main_n_backup(
+            staging_table_name, main_table_name, backup_table_name)
+        print("Done group 2")
+        manager.run_group3_update_meta_n_clear_staging(
+            "2021-12-03", staging_table_name)
+        print("Done processing!!!!!!")
+    except CustomException as e:
+        logging.error(e)
+    # TO DO: handle connection more effective
