@@ -1,18 +1,22 @@
 import sys
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from vnstock import listing_companies, stock_historical_data
 from src.Logger import logging
 from src.Exception import CustomException
 from src.etl.SQLManager import SQLManager
+# TO DO: crawl start from a certain ticker
+# idea: create get_company_ticker function to return all tickers
+#  for the crawl_start_from: adjust so that
+'''my_list = ["a", "b", "c"]
 
-# TO DO: crawl the newest data + incrementally crawl and store data: store the global date(min) in the table to start crawl from that date next time
-# TO DO: versoning data
-# TO DO: table- store raw crawl data
-# TO DO: logic to insert data from staging to main table
-# TO DO: main table
-# backup table-store backup data, main table-store final data(processed)
-# TO DO: create a trnasaction, if fail at any step then rolllback
+# Find the index of "b" and slice from there
+start_index = my_list.index("b")  # Find the index of "b"
+result = my_list[start_index:]  # Slice from index of "b" onwards
+
+print(result)  # Output: ['b', 'c']
+'''
+
 
 class Crawler:
     def __init__(self):
@@ -20,18 +24,18 @@ class Crawler:
         self.sql_manager = SQLManager()
         print("inited SQL manager from crawler!")
 
-    def get_last_crawl_date(self):
+    def get_last_crawl_date(self, meta_table_name):
         default_date = "2000-01-01"
         try:
-            last_crawl_date = self.sql_manager.fetch_latest_crawl_date()
+            last_crawl_date = self.sql_manager.fetch_last_crawl_date(
+                meta_table_name=meta_table_name)
             if last_crawl_date:
                 return last_crawl_date
             return default_date
         except Exception as e:
-            logging.error(f"Error fetching last crawl date: {e}")
-            return
+            raise CustomException(f"Error fetching last crawl date: {e}", sys)
 
-    def crawl_raw_historical_vn(self):
+    def crawl_raw_historical_vn(self, staging_table_name, meta_table_name):
         logging.info("Enter Crawler - crawl_raw_historical_vn()")
 
         companies_df = listing_companies()
@@ -42,37 +46,19 @@ class Crawler:
         # Get start date: the latest_crawl date - 3days. IF SCHEDULE THE CRALER
         # TO CRAWL EVERY MONDAY THEN DO NOT NEED TO CRAWL DATA FROM 3 DAYS AHEAD
         # Calculate the previous 3rd day
-        latest_date = datetime.strptime(self.get_last_crawl_date(), "%Y-%m-%d")
+        latest_date = datetime.strptime(
+            self.get_last_crawl_date(meta_table_name=meta_table_name),
+            "%Y-%m-%d")
         # previous_3rd_day = latest_date - timedelta(days=3)
         start_date = latest_date.strftime('%Y-%m-%d')
 
         today = datetime.today()
         end_date = today.strftime('%Y-%m-%d')  # Convert to string 'YYYY-MM-DD'
         logging.info(f"Crawl data from {start_date} to {end_date}.")
-        '''
-        try:
-            # Check if date format is correct
-            datetime.strptime(start_date, r"%Y-%m-%d")
-            datetime.strptime(end_date, r"%Y-%m-%d")
 
-        except ValueError as e:
-            logging.error(f"Invalid date format: {e}")
-            raise CustomException(f"Invalid date format: {e}", sys)'''
-
-        # STAGING TABLE
-        self.sql_manager.create_table_from_df(, table_name="staging")
-        self.sql_manager.insert_data_from_df(,table_name="staging")
-        # compare with main table
-        # upsert to main table
-        # create/update meta table
-        # create/update backup table
-        
-        # Create meta table
-        self.sql_manager.create_metadata_table()
         # Start the loop
         for i in range(len(company_tickers)):
             try:
-                # logging.info(f"Start crawling({i}) {company_tickers[i]}")
                 # Craw data from start date to end date
                 df_stock_historical_data = stock_historical_data(
                     symbol=company_tickers[i],
@@ -99,23 +85,16 @@ class Crawler:
 
                 df_stock_historical_data["code"] = company_stock_exchanges[i]
                 # insert data to SQL database
-                table_name = "historicalStock"
-                self.sql_manager.create_table_from_df(df_stock_historical_data,
-                                                      table_name=table_name)
-                self.sql_manager.insert_data_from_df(df_stock_historical_data,
-                                                     table_name=table_name)
+                self.sql_manager.run_group1_insert_raw_to_staging(
+                    df=df_stock_historical_data,
+                    table_name=staging_table_name)
                 logging.info(
                     f"Processed historical stock: {company_tickers[i]}")
             except Exception as e:
                 logging.error(
                     f"Error processing historical {company_tickers[i]}: {e}")
                 raise CustomException(e, sys)
-        # Insert the latest crawl date to meta table
-        self.sql_manager.update_metadata_table(end_date)
-        # TO DO: compare and insert data in staging to main ?
-        # TO DO: backup data
-        # Close connection
-        self.sql_manager.close_connection()
+        return end_date
 
 
 if __name__ == "__main__":

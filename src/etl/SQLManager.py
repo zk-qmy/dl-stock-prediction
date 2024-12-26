@@ -60,6 +60,7 @@ class SQLManager:
         print("Done getting connection from SQL Manager!")
 
     def check_table_exists(self, conn, table_name):
+        table_name = table_name.lower()
         query = f"SHOW TABLES LIKE '{table_name}'"
         try:
             result = conn.execute(text(query)).fetchone()
@@ -71,6 +72,7 @@ class SQLManager:
                 f"Error checking `{table_name}` existence: {e}", sys)
 
     def check_empty_table(self, conn, table_name):
+        table_name = table_name.lower()
         query = text(f"SELECT COUNT(*) FROM {table_name}")
         try:
             table_row_count = conn.execute(query).fetchone()[0]
@@ -80,6 +82,7 @@ class SQLManager:
             raise CustomException(e, sys)
 
     def truncate_table(self, conn, table_name):
+        table_name = table_name.lower()
         if not self.check_table_exists(conn, table_name):
             logging.error("Table does not exist to truncate")
             raise CustomException("Table does not exist to truncate")
@@ -92,6 +95,8 @@ class SQLManager:
             raise CustomException(e, sys)
 
     def create_table_like(self, conn, output_table, source_table):
+        output_table = output_table.lower()
+        source_table = source_table.lower()
         # check if source_table exist
         if not self.check_table_exists(conn, source_table):
             raise CustomException(
@@ -110,28 +115,30 @@ class SQLManager:
                 f"Error creating `{output_table}` from {source_table}: {e}", sys)
 
 # Metadata table: Insert metadata
-    def create_metadata_table(self, conn, table_name="crawl_metadata"):
-        if self.check_table_exists(conn, table_name):
-            logging.info(f"Table `{table_name}` already exists.")
-            return
+    def create_metadata_table(self, meta_table_name):
+        table_name = meta_table_name.lower()
 
-        query = """CREATE TABLE crawl_metadata (
+        query = f"""CREATE TABLE {table_name} (
             id INT AUTO_INCREMENT PRIMARY KEY,
             last_crawl_date DATE
             );
             """
         # Execute query
-        # with self.connection.connect() as conn:
-        try:
-            conn.execute(text(query))
-            logging.info(f"Table `{table_name}` created!")
-            return
-        except Exception as e:
-            raise CustomException(
-                f"Error creating table `{table_name}`: {e}", sys)
+        with self.connection.connect() as conn:
+            try:
+                if self.check_table_exists(conn, table_name):
+                    logging.info(f"Table `{table_name}` already exists.")
+                    return
+                conn.execute(text(query))
+                logging.info(f"Table `{table_name}` created!")
+                return
+            except Exception as e:
+                raise CustomException(
+                    f"Error creating table `{table_name}`: {e}", sys)
 
     def update_metadata_table(self, conn, last_crawl_date,
-                              table_name="crawl_metadata"):
+                              meta_table_name):
+        table_name = meta_table_name.lower()
         # Check if table exist
         if not self.check_table_exists(conn, table_name):
             raise CustomException(f"Table `{table_name}` not exist.")
@@ -189,13 +196,16 @@ class SQLManager:
             # trans.rollback()  # Rollback in case of error
             raise CustomException(e, sys)
 
-    def fetch_last_crawl_date(self, table_name="crawl_metadata"):
+    def fetch_last_crawl_date(self, meta_table_name):
+        table_name = meta_table_name.lower()
         query = f"""SELECT last_crawl_date FROM {table_name}
             ORDER BY last_crawl_date DESC
             LIMIT 1"""
         # Execute query
         with self.connection.connect() as conn:
             try:
+                if not self.check_table_exists(conn, table_name):
+                    raise CustomException(f"Create {table_name} before fetching!")
                 result = conn.execute(text(query)).fetchone()
                 if result:
                     # Assuming the date is the first column in the result
@@ -311,12 +321,13 @@ class SQLManager:
             logging.info(f"Column names: {column_names}")
             # Construct the SQL query with ON DUPLICATE KEY UPDATE
             query = text(f"""
-            INSERT INTO {destination_table_name} ({column_names})
-            SELECT {', '.join(columns)} FROM {input_table_name}
-            ON DUPLICATE KEY UPDATE
-                {', '.join([f"{col} = VALUES({col})" for col in columns])};
+                INSERT INTO {destination_table_name} ({column_names})
+                SELECT {', '.join(columns)} FROM {input_table_name} AS source
+                ON DUPLICATE KEY UPDATE
+                    {', '.join([f"{col} = source.{col}" for col in columns])};
             """)
-            logging.info(f"Table to table upsert query: \n{query}")
+
+            logging.info(f"`{input_table_name}` to `{destination_table_name}` upsert query: \n{query}")
             # Execute the query
             # with conn.begin():
             conn.execute(query)
@@ -386,6 +397,7 @@ class SQLManager:
                 raise CustomException(e, sys)
 
     def run_group3_update_meta_n_clear_staging(self, last_crawl_date,
+                                               meta_table_name,
                                                staging_table_name):
         # NOTICE: CREATE META TABLE BEFORE RUN THIS
         # Group 3: update meta table + clear staging
@@ -395,7 +407,8 @@ class SQLManager:
                 trans = conn.begin()
 
                 # Operation 1: Update meta table
-                self.update_metadata_table(conn, last_crawl_date)
+                self.update_metadata_table(conn, last_crawl_date,
+                                           meta_table_name)
                 # Operation 2: clear staging table
                 self.truncate_table(conn, staging_table_name)
 
@@ -435,6 +448,7 @@ if __name__ == "__main__":
     staging_table_name = "staging_employees"
     main_table_name = "main_employees"
     backup_table_name = "backup_employees"
+    meta_table = "meta"
     manager = SQLManager()
     try:
         manager.run_group1_insert_raw_to_staging(df, staging_table_name)
@@ -444,13 +458,17 @@ if __name__ == "__main__":
                 connection, main_table_name, staging_table_name)
             manager.create_table_like(
                 connection, backup_table_name, main_table_name)
-            manager.create_metadata_table(connection)
+            manager.create_metadata_table(connection, meta_table)
         manager.run_group2_insert_staging_to_main_n_backup(
             staging_table_name, main_table_name, backup_table_name)
         print("Done group 2")
         manager.run_group3_update_meta_n_clear_staging(
-            "2021-12-03", staging_table_name)
+            "2021-12-03", meta_table_name=meta_table,
+            staging_table_name=staging_table_name)
         print("Done processing!!!!!!")
     except CustomException as e:
         logging.error(e)
     # TO DO: handle connection more effective
+    # TO DO: fix this bug? when insert the data.
+    # if the data of the next time is the same,
+    # those data will still be inserted
