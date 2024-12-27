@@ -38,20 +38,31 @@ class Crawler:
     def get_company_tickers(self, start_ticker="all"):
         companies_df = listing_companies()
         full_ticker_list = companies_df['ticker'].to_list()
+        full_comp_exchanges_list = companies_df["comGroupCode"].to_list()
+        # Combine the two lists into a list of tuples
+        full_ticker_exchange_tuples = list(
+            zip(full_ticker_list, full_comp_exchanges_list)
+            )
         if start_ticker == "all":
-            return full_ticker_list
-        # Find the index of start_ticker and slice from there
-        start_index = full_ticker_list.index(start_ticker)  # Find the index of start_ticker
-        result = full_ticker_list[start_index:]  # Slice from index of start_ticker onwards
-        logging.info(f"Ticker start index: {start_index}, New ticker list: {result}")
-        return result
+            return full_ticker_exchange_tuples
+        # Find the index of start_ticker
+        start_index = full_ticker_list.index(start_ticker)
+        # Slice from index of start_ticker onwards
+        partial_ticker_list = full_ticker_list[start_index:]
+        partial_comp_exchanges_list = full_comp_exchanges_list[start_index:]
+        partial_ticker_exchanges_tuples = list(
+            zip(partial_ticker_list, partial_comp_exchanges_list)
+        )
+        logging.info(f"Ticker start index: {start_index},"
+                     + f" New ticker list: {partial_ticker_exchanges_tuples}")
+        return partial_ticker_exchanges_tuples
 
-    def crawl_raw_historical_vn(self, staging_table_name, meta_table_name):
+    def crawl_raw_historical_vn(self,
+                                staging_table_name, meta_table_name,
+                                start_ticker="all"):
         logging.info("Enter Crawler - crawl_raw_historical_vn()")
 
-        companies_df = listing_companies()
-        company_tickers = companies_df["ticker"]
-        company_stock_exchanges = companies_df["comGroupCode"]
+        company_tickers = self.get_company_tickers(start_ticker=start_ticker)
 
         # Ensure start and end dates are in the correct format (YYYY-MM-DD)
         # Get start date: the latest_crawl date - 3days. IF SCHEDULE THE CRALER
@@ -72,12 +83,14 @@ class Crawler:
             try:
                 # Craw data from start date to end date
                 df_stock_historical_data = stock_historical_data(
-                    symbol=company_tickers[i],
+                    symbol=company_tickers[i][0],
                     start_date=start_date, end_date=end_date)
                 # logging.info(f"Finish crawling {company_tickers[i]}!")
-                if df_stock_historical_data.empty or df_stock_historical_data is None:
+                if df_stock_historical_data is None:
+                    logging.warning(f"Dataframe {company_tickers[i][0]} is None!")
+                    df_stock_historical_data = pd.DataFrame()
+                if df_stock_historical_data.empty:
                     logging.warning(f"No data for {company_tickers[i]}")
-                    continue
                 if ("date" in df_stock_historical_data.columns):
                     df_stock_historical_data["date"] = pd.to_datetime(
                         df_stock_historical_data["date"],
@@ -94,7 +107,7 @@ class Crawler:
                         errors="coerce"
                     )
 
-                df_stock_historical_data["code"] = company_stock_exchanges[i]
+                df_stock_historical_data["code"] = company_tickers[i][1]  # company_stock_exchanges[i]
                 # insert data to SQL database
                 self.sql_manager.run_group1_insert_raw_to_staging(
                     df=df_stock_historical_data,
@@ -105,12 +118,15 @@ class Crawler:
                 logging.error(
                     f"Error processing historical {company_tickers[i]}: {e}")
                 raise CustomException(e, sys)
+        logging.info("-----FINISH CRAWLING AND INSERT HISTORICAL STOCK!-----")
         return end_date
 
 
 if __name__ == "__main__":
     try:
         CRAWLER = Crawler()
-        CRAWLER.crawl_raw_historical_vn()
+        CRAWLER.crawl_raw_historical_vn(start_ticker="VES",
+                                        staging_table_name="test_staging",
+                                        meta_table_name="test_meta")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")

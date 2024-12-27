@@ -100,7 +100,7 @@ class SQLManager:
         # check if source_table exist
         if not self.check_table_exists(conn, source_table):
             raise CustomException(
-                f"Source table `{source_table}` does not exist. Create one")
+                f"Source table `{source_table}` does not exist. Create one!")
         # check if output table already exist
         if self.check_table_exists(conn, output_table):
             logging.warning(f"Table `{output_table}` already exist.")
@@ -273,7 +273,7 @@ class SQLManager:
             # Use SQLAlchemy's `to_sql` for bulk insert
             df.to_sql(
                 table_name,
-                self.connection,
+                conn,  # self.connection,
                 if_exists="append",
                 index=False,
                 chunksize=chunksize)
@@ -361,8 +361,10 @@ class SQLManager:
 
                 # Operation 1: Create table from df
                 self.create_table_from_df(conn, df, table_name)
+                # logging.info(f"Done creating table `{table_name}`!")
                 # Operation 2: Insert data from df to table
                 self.insert_data_from_df(conn, df, table_name)
+                # logging.info("Done inserting raw data to db!")
 
                 # If all operations succeed, commit the global transaction
                 trans.commit()
@@ -384,9 +386,11 @@ class SQLManager:
                 # Operation 1: upsert staging data to main table
                 self.upsert_data_from_table_to_table(conn, staging_table,
                                                      main_table)
+                # logging.info(f"Done upsert to `{main_table}`!")
                 # Operation 2: upsert staging data to backup table
                 self.upsert_data_from_table_to_table(conn, staging_table,
                                                      backup_table)
+                # logging.info(f"Done upsert to `{backup_table}`!")
 
                 # If all operations succeed, commit the global transaction
                 trans.commit()
