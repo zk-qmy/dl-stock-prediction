@@ -35,6 +35,17 @@ class Crawler:
         except Exception as e:
             raise CustomException(f"Error fetching last crawl date: {e}", sys)
 
+    def get_company_tickers(self, start_ticker="all"):
+        companies_df = listing_companies()
+        full_ticker_list = companies_df['ticker'].to_list()
+        if start_ticker == "all":
+            return full_ticker_list
+        # Find the index of start_ticker and slice from there
+        start_index = full_ticker_list.index(start_ticker)  # Find the index of start_ticker
+        result = full_ticker_list[start_index:]  # Slice from index of start_ticker onwards
+        logging.info(f"Ticker start index: {start_index}, New ticker list: {result}")
+        return result
+
     def crawl_raw_historical_vn(self, staging_table_name, meta_table_name):
         logging.info("Enter Crawler - crawl_raw_historical_vn()")
 
