@@ -1,30 +1,29 @@
-import pandas as pd
 from ta.trend import SMAIndicator, EMAIndicator, MACD
 from ta.momentum import RSIIndicator
-import numpy as np
 import plotly.graph_objects as go
-import streamlit as st
 
 
 def get_indicator_signals(data):
     plot_dt = data.copy()
     """
-    This function calculates various technical indicators and generates trading signals
+    This function calculates various technical indicators and
+    generates trading signals
     for a given stock price plot_dtFrame.
 
     Parameters:
     plot_dt (pd.plot_dtFrame): plot_dtFrame containing 'Close' price plot_dt.
 
     Returns:
-    pd.plot_dtFrame: plot_dtFrame with added columns for SMA, EMA, MACD, RSI, and corresponding signals.
+    pd.plot_dtFrame: plot_dtFrame with added columns for SMA, EMA, MACD, RSI,
+    and corresponding signals.
     """
-    # Calculate 20-day and 50-day Simple Moving Averages (SMA) on the Close price
+    # Calculate 20-day and 50-day Simple Moving Averages (SMA) on Close price
     plot_dt['SMA_20'] = SMAIndicator(
         close=plot_dt['Close'], window=20).sma_indicator()
     plot_dt['SMA_50'] = SMAIndicator(
         close=plot_dt['Close'], window=50).sma_indicator()
 
-    # Calculate 12-day and 26-day Exponential Moving Averages (EMA) on the Close price
+    # 12-day and 26-day Exponential Moving Averages (EMA) on Close price
     plot_dt['EMA_12'] = EMAIndicator(
         close=plot_dt['Close'], window=12).ema_indicator()
     plot_dt['EMA_26'] = EMAIndicator(
@@ -81,7 +80,9 @@ def make_decision(plot_dt):
             + plot_dt.loc[i, 'MACD_Signal']
                 + plot_dt.loc[i, 'RSI_Signal']) >= 2:
             plot_dt.loc[i, 'Decision'] = 1  # buy
-        elif (plot_dt.loc[i, 'SMA_Signal']+plot_dt.loc[i, 'MACD_Signal']+plot_dt.loc[i, 'RSI_Signal']) <= -2:
+        elif (plot_dt.loc[i, 'SMA_Signal']
+              + plot_dt.loc[i, 'MACD_Signal']
+              + plot_dt.loc[i, 'RSI_Signal']) <= -2:
             plot_dt.loc[i, 'Decision'] = 2  # sell
         else:
             plot_dt.loc[i, 'Decision'] = 0
@@ -90,12 +91,13 @@ def make_decision(plot_dt):
 
 def plot_candlestick_with_decisions(go_df):
     """
-    This function generates a candlestick chart with buy and sell trading decisions.
+    Generates a candlestick chart with buy and sell trading decisions.
 
     Parameters:
-    go_df (pd.plot_dtFrame): plot_dtFrame containing 'TradingDate', 'Open', 'High', 'Low', 'Close', and 'Decision' columns.
-                          The 'Decision' column should contain values for trading decisions:
-                          1 for Buy, 2 for Sell, and 0 for Hold.
+    go_df (pd.plot_dtFrame): plot_dtFrame containing 'TradingDate', 'Open',
+        'High', 'Low', 'Close', and 'Decision' columns.
+        The 'Decision' column should contain values for trading decisions:
+              1 for Buy, 2 for Sell, and 0 for Hold.
 
     Returns:
     the candlestick chart with buy and sell markers.

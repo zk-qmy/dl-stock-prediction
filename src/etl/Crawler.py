@@ -5,17 +5,6 @@ from vnstock import listing_companies, stock_historical_data
 from src.Logger import logging
 from src.Exception import CustomException
 from src.etl.SQLManager import SQLManager
-# TO DO: crawl start from a certain ticker
-# idea: create get_company_ticker function to return all tickers
-#  for the crawl_start_from: adjust so that
-'''my_list = ["a", "b", "c"]
-
-# Find the index of "b" and slice from there
-start_index = my_list.index("b")  # Find the index of "b"
-result = my_list[start_index:]  # Slice from index of "b" onwards
-
-print(result)  # Output: ['b', 'c']
-'''
 
 
 class Crawler:
@@ -67,7 +56,6 @@ class Crawler:
         # Ensure start and end dates are in the correct format (YYYY-MM-DD)
         # Get start date: the latest_crawl date - 3days. IF SCHEDULE THE CRALER
         # TO CRAWL EVERY MONDAY THEN DO NOT NEED TO CRAWL DATA FROM 3 DAYS AHEAD
-        # Calculate the previous 3rd day
         latest_date = datetime.strptime(
             self.get_last_crawl_date(meta_table_name=meta_table_name),
             "%Y-%m-%d")
@@ -107,7 +95,7 @@ class Crawler:
                         errors="coerce"
                     )
 
-                df_stock_historical_data["code"] = company_tickers[i][1]  # company_stock_exchanges[i]
+                df_stock_historical_data["code"] = company_tickers[i][1]
                 # insert data to SQL database
                 self.sql_manager.run_group1_insert_raw_to_staging(
                     df=df_stock_historical_data,
