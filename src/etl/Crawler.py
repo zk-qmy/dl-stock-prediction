@@ -5,6 +5,7 @@ from vnstock import listing_companies, stock_historical_data
 from src.Logger import logging
 from src.Exception import CustomException
 from src.etl.SQLManager import SQLManager
+import requests
 
 
 class Crawler:
@@ -34,6 +35,9 @@ class Crawler:
             )
         if start_ticker == "all":
             return full_ticker_exchange_tuples
+        if start_ticker != "all" and start_ticker not in full_ticker_list:
+            raise CustomException(f"Ticker {start_ticker} not found in the list", sys)
+
         # Find the index of start_ticker
         start_index = full_ticker_list.index(start_ticker)
         # Slice from index of start_ticker onwards
@@ -68,11 +72,13 @@ class Crawler:
 
         # Start the loop
         for i in range(len(company_tickers)):
+            df_stock_historical_data = None  # Init dataframe
             try:
                 # Craw data from start date to end date
                 df_stock_historical_data = stock_historical_data(
                     symbol=company_tickers[i][0],
                     start_date=start_date, end_date=end_date)
+                # logging.info(df_stock_historical_data)
                 # logging.info(f"Finish crawling {company_tickers[i]}!")
                 if df_stock_historical_data is None:
                     logging.warning(f"Dataframe {company_tickers[i][0]} is None!")
@@ -102,9 +108,20 @@ class Crawler:
                     table_name=staging_table_name)
                 logging.info(
                     f"Processed historical stock: {company_tickers[i]}")
+            except requests.exceptions.HTTPError as e:  # catch error raise by library
+                if "400" in str(e) and "invalid symbol" in str(e).lower():
+                    logging.warning(f"Skipping ticker {company_tickers[i][0]} due to BAD_REQUEST error.")
+                else:
+                    logging.error(f"HTTP error occured: {e}")
+                continue  # skip this ticker and move to the next one
+            except UnboundLocalError as ue:
+                logging.warning("Failed to retrieve data due to an invalid API response or other issue."
+                                + f" when processing {company_tickers[i][0]}: {ue}")
+                continue
             except Exception as e:
                 logging.error(
                     f"Error processing historical {company_tickers[i]}: {e}")
+                logging.info(df_stock_historical_data)
                 raise CustomException(e, sys)
         logging.info("-----FINISH CRAWLING AND INSERT HISTORICAL STOCK!-----")
         return end_date

@@ -7,15 +7,17 @@ from src.Exception import CustomException
 if __name__ == "__main__":
     # Determine tables' name
     # The staging table will be created dynamically
-    # staging_table_name = "staging_historicalStock"
-    # main_table_name = "main_historicalStock"
-    # backup_table_name = "backup_historicalStock"
-    # meta_table_name = "metadata_historicalStock"
+    staging_table_name = "staging_historicalStock"
+    main_table_name = "main_historicalStock"
+    backup_table_name = "backup_historicalStock"
+    meta_table_name = "metadata_historicalStock"
 
+    '''
     staging_table_name = "test_staging"
     main_table_name = "test_main"
     backup_table_name = "test_backup"
     meta_table_name = "test_meta"
+    '''
 
     MANAGER = SQLManager()
     CRAWLER = Crawler()
@@ -26,7 +28,7 @@ if __name__ == "__main__":
         to_update_last_crawl_date = CRAWLER.crawl_raw_historical_vn(
             staging_table_name=staging_table_name,
             meta_table_name=meta_table_name,
-            start_ticker="VES")  # remove this param to crawl all company
+            start_ticker="PTN")  # remove this param to crawl all company
         print("Done group 1: Crawled and stored in staging table!")
 
     # STORE DATA TO DATABASE
