@@ -1,3 +1,5 @@
+# Data Crawling using Vnstock3 (Licensed for personal use only)
+# Source: https://github.com/thinh-vu/vnstock
 import sys
 import pandas as pd
 from datetime import datetime

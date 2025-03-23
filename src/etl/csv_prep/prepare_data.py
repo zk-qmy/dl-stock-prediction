@@ -4,7 +4,7 @@ choose the the company with best quality data of each group (profit and risk)
 to train and get the top and bottom company '''
 import pandas as pd
 get_db_engine
-from . import data_to_sql as dtsql
+from .csv_prep import data_to_sql as dtsql
 import os
 # from src.Logger import Logger
 

@@ -2,7 +2,7 @@ from src.utils import SQLConnection
 '''Encounter Wildcard imports when trying to
 from utils.db_connection import * '''
 # from src.etl.data_to_sql import insert_to_sql, get_data
-from src.etl.prepare_data import prepare_raw_data, get_raw_top_data
+from src.etl.csv_prep.prepare_data import prepare_raw_data, get_raw_top_data
 import os
 
 sqlDB = SQLConnection()
