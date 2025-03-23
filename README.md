@@ -1,4 +1,15 @@
-"dl-stock-prediction" 
+"Stock Trading Signal Prediction 📈"
+
+This project focuses on predicting stock prices and trading signals using deep learning models on two datasets: Nasdaq and Vietnam stock market data (VN dataset). The project applies LSTM, GRU, BiGRU, and CNN models for time-series forecasting and signal prediction.
+
+## Features
+✅ Stock Price Prediction (LSTM, GRU, BiGRU)
+✅ Trading Signal Prediction (Buy/Sell/Hold)
+✅ Deep Learning with Time Series Split & Cross-Validation
+✅ Integration with MySQL for Data Storage
+✅ Automated Preprocessing & Feature Engineering
+✅ Web App display predicted Buy/Sell signal using Streamlit
+
 
 # Tentative Project Structure
 ```
@@ -14,8 +25,8 @@ dl-stock-prediction/
 │   └── processed/        
 │
 ├── notebooks/             
-│   ├── 1_nasdaq_analysis.ipynb
-│   ├── 2_vietnam_analysis.ipynb
+│   ├── Task1-1-price-next-day-nasdag.ipynb
+│   ├── Task1-2-price-next-kth-day-nasdag.ipynb
 │   └── ...
 │
 ├── src/                  
@@ -33,17 +44,12 @@ dl-stock-prediction/
 │   ├── models/            
 │   ├── evaluation/        
 │   │   └── evaluate.py    
-│   ├── utils/
-│   │   └── db_connection.py
-│   ├── Logger.py       
-│   │      
-│   └── main.py         
+│   └── utils/
+|       ├── Logger.py 
+│       └── Exception.py              
 │
-├── deployment/
-|    ├── api.py
-|    ├── app.py
-|    ├── requirements.txt
-|    └── Dockerfile
+├── app.py
+├── main.py
 |
 ├── requirements.txt       
 ├── README.md              
@@ -64,3 +70,13 @@ run the app.py
 ```
 streamlit run deployment app.py
 ```
+
+## 📜 Acknowledgments
+This project uses the **Vnstock3** library for stock data crawling.  
+- **Library:** [Vnstock3](https://github.com/thinh-vu/vnstock)  
+- **Author:** Thinh Vu  
+- **License:** Personal use only, non-commercial (© 2024 Thinh Vu)  
+
+⚠ **Note:** This project is for **educational and research purposes only**. Commercial use of Vnstock3 is prohibited without written permission from the author.
+Special thanks to the contributors of this library for making financial data easily accessible!
+
