@@ -18,9 +18,9 @@ class Backend:
         # self.df = self.load_close_data()
         print("Done getting connection from SQL Manager!")
 
-    def fetch_close_data(self, ticker_name):
+    def fetch_data(self, ticker_name):
         query = text("""
-            SELECT close
+            SELECT *
              FROM main_historicalstock
              WHERE ticker = :ticker_name
         """)
@@ -59,7 +59,7 @@ class DataController:
 
     # @st.cache_data  # to not to run the code again
     def get_dataFrame(self, ticker):
-        data = self.backend.fetch_close_data(ticker_name=ticker)
+        data = self.backend.fetch_data(ticker_name=ticker)
         data = data.dropna().drop_duplicates()
         return data
 
@@ -108,17 +108,17 @@ class Predictor:  # Make prediction with TensorFlow model
             return "Buy", changes
         return "Hold", changes
 
-    def get_signal_date_n_price(self, y_pred_denorm, df):
+    def get_signal_date_n_price(y_pred_denorm, df):
         # Flatten the 2D array to 1D if it's not already 1D
         # Use with cautious!!!
         y_pred_flat = y_pred_denorm.flatten()
 
         # Ensure future_dates has the correct number of dates (look_ahead is 7)
         look_ahead = 7
-        last_date = df.index[-1]  # The last date in the historical data
+        last_date = df['time'].iloc[-1]  # The last date in the historical data
         # Generate the future dates (7 days ahead, including weekends)
         future_dates = pd.date_range(
-            start=last_date, periods=look_ahead + 1, freq='D')[1:]  # Exclude the start date
+            start=last_date, periods=look_ahead + 1, freq='D')[1:]  # Exclude start date
         # Create a pandas Series to map the predicted values to the corresponding dates
         future_prices = pd.Series(y_pred_flat, index=future_dates)
 

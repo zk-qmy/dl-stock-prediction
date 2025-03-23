@@ -46,8 +46,8 @@ class Crawler:
         partial_ticker_exchanges_tuples = list(
             zip(partial_ticker_list, partial_comp_exchanges_list)
         )
-        logging.info(f"Ticker start index: {start_index},"
-                     + f" New ticker list: {partial_ticker_exchanges_tuples}")
+        # logging.info(f"Ticker start index: {start_index},"
+        #             + f" New ticker list: {partial_ticker_exchanges_tuples}")
         return partial_ticker_exchanges_tuples
 
     def crawl_raw_historical_vn(self,
@@ -58,7 +58,7 @@ class Crawler:
         company_tickers = self.get_company_tickers(start_ticker=start_ticker)
 
         # Ensure start and end dates are in the correct format (YYYY-MM-DD)
-        # Get start date: the latest_crawl date - 3days. IF SCHEDULE THE CRALER
+        # Get start date: the latest_crawl date - 3days. IF SCHEDULE THE CRAWLER
         # TO CRAWL EVERY MONDAY THEN DO NOT NEED TO CRAWL DATA FROM 3 DAYS AHEAD
         latest_date = datetime.strptime(
             self.get_last_crawl_date(meta_table_name=meta_table_name),
@@ -85,6 +85,7 @@ class Crawler:
                     df_stock_historical_data = pd.DataFrame()
                 if df_stock_historical_data.empty:
                     logging.warning(f"No data for {company_tickers[i]}")
+                    continue
                 if ("date" in df_stock_historical_data.columns):
                     df_stock_historical_data["date"] = pd.to_datetime(
                         df_stock_historical_data["date"],

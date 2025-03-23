@@ -28,7 +28,7 @@ if __name__ == "__main__":
         to_update_last_crawl_date = CRAWLER.crawl_raw_historical_vn(
             staging_table_name=staging_table_name,
             meta_table_name=meta_table_name,
-            start_ticker="PTN")  # remove this param to crawl all company
+            start_ticker="KSS")  # remove this param to crawl all company
         print("Done group 1: Crawled and stored in staging table!")
 
     # STORE DATA TO DATABASE

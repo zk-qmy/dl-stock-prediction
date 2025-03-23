@@ -54,8 +54,10 @@ def predict_buying_date(ticker, model_path, feature_scalers_path, y_scaler_path)
 
     # Get the buying/selling signal
     # signal_n_changes = get_signal(y_pred_denorm)
-    buy_date = Predictor.get_signal_date_n_price(y_pred_denorm, data)
+    buy_date = Predictor.get_signal_date_n_price(y_pred_denorm=y_pred_denorm,
+                                                 df=data)
     return buy_date
+
 
 output_data = predict_buying_date(
     selected_ticker, model_path, feature_scalers_path, y_scaler_path)
@@ -85,6 +87,7 @@ st.markdown("---")
 st.write("### 📉 Price Trend Around Buy/Sell Dates")
 price_data = DATA_CONTROLLER.get_dataFrame(selected_ticker)
 # st.write(price_data.head())
-st.line_chart(price_data['Close'])
+price_data.set_index('time', inplace=True)
+st.line_chart(price_data['close'])
 fig = charts.plot_trading_signal(price_data)
 st.plotly_chart(fig)
