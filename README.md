@@ -70,6 +70,10 @@ run the app.py
 ```
 streamlit run deployment app.py
 ```
+![Predicted Buy/Sell Signal](https://github.com/user-attachments/assets/fbfacb3c-90e9-49fa-9eff-08c5c500eeb6)
+![Close Price of SSI](https://github.com/user-attachments/assets/20eeed07-291c-45b8-a431-c739192544dd)
+![Desicion on SSI stock](https://github.com/user-attachments/assets/d3dc9d1f-fdfc-44fe-b002-bad340fa6360)
+
 
 ## 📜 Acknowledgments
 This project uses the **Vnstock3** library for stock data crawling.  
