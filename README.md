@@ -1,14 +1,14 @@
-"Stock Trading Signal Prediction 📈"
+# Stock Trading Signal Prediction 📈
 
 This project focuses on predicting stock prices and trading signals using deep learning models on two datasets: Nasdaq and Vietnam stock market data (VN dataset). The project applies LSTM, GRU, BiGRU, and CNN models for time-series forecasting and signal prediction.
 
 ## Features
-✅ Stock Price Prediction (LSTM, GRU, BiGRU)
-✅ Trading Signal Prediction (Buy/Sell/Hold)
-✅ Deep Learning with Time Series Split & Cross-Validation
-✅ Integration with MySQL for Data Storage
-✅ Automated Preprocessing & Feature Engineering
-✅ Web App display predicted Buy/Sell signal using Streamlit
+* ✅ Stock Price Prediction (LSTM, GRU, BiGRU)
+* ✅ Trading Signal Prediction (Buy/Sell)
+* ✅ Time Series Cross-Validation
+* ✅ Integration with MySQL for Data Storage
+* ✅ Automated Preprocessing & Feature Engineering
+* ✅ Web App display predicted Buy/Sell signal using Streamlit
 
 
 # Tentative Project Structure
