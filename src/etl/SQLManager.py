@@ -1,4 +1,4 @@
-import yaml
+import streamlit as st
 import sys
 import pandas as pd
 from datetime import datetime
@@ -8,33 +8,25 @@ from src.Exception import CustomException
 
 
 class SQLConnection:
-    def __init__(self, config_path="config.yaml"):
+    def __init__(self):
         print("init SQLConnection")
-        self.config = self.load_config(config_path)
+        # self.config = self.load_config(config_path)
         self.engine = None
-
-    def load_config(self, config_path):
-        try:
-            with open(config_path, 'r') as file:
-                config = yaml.safe_load(file)
-                return config
-        except FileNotFoundError as e:
-            logging.info(f"Error: {config_path} not found")
-            raise CustomException(e, sys)
-        except yaml.YAMLError as e:
-            logging.info(f"Error reading file: {e}")
-            raise CustomException(e, sys)
 
     def get_db_engine(self):
         # Setup DB connection
         if self.engine is None:
-            db_config = self.config['database']
             try:
-                self.engine = create_engine(f"mysql+pymysql://"
-                                            f"{db_config['username']}:"
-                                            f"{db_config['password']}@"
-                                            f"{db_config['host']}:{db_config['port']}/"
-                                            f"{db_config['dbname']}")
+                db_user = st.secrets['DB_USER']
+                db_pass = st.secrets['DB_PASSWORD']
+                db_host = st.secrets['DB_HOST']
+                db_port = st.secrets['DB_PORT']
+                db_name = st.secrets['DB_NAME']
+
+                self.engine = create_engine(f"mysql+pymysql://{db_user}:"
+                                            + f"{db_pass}@{db_host}:"
+                                            + f"{db_port}/{db_name}")
+
             except exc.SQLAlchemyError as e:
                 logging.error(f"Database Connecting failed: {e}")
                 raise CustomException(e, sys)

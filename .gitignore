@@ -21,6 +21,7 @@ data/
 # Configuration files
 # Exclude configuration files containing sensitive info like database credentials
 config.yaml
+.streamlit/*
 
 # Virtual environment
 venv/
